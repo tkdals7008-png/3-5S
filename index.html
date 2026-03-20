@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Machine 3정5S 점검</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; margin: 0; padding: 15px; color: #333; }
+        .container { background-color: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+        h2 { text-align: center; font-size: 20px; margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input[type="text"], input[type="date"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        .category-title { background-color: #4a5568; color: white; padding: 8px; margin-top: 20px; margin-bottom: 10px; border-radius: 4px; font-size: 15px; font-weight: bold; }
+        .check-item { margin-bottom: 15px; padding: 10px; background-color: #f9f9f9; border: 1px solid #e2e8f0; border-radius: 4px; }
+        .check-item-text { font-size: 14px; margin-bottom: 10px; }
+        .radio-group { display: flex; gap: 10px; }
+        .radio-group label { flex: 1; text-align: center; background-color: #edf2f7; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e0; cursor: pointer; margin: 0; font-weight: normal; }
+        .radio-group input[type="radio"] { display: none; }
+        .radio-group input[type="radio"]:checked + span { font-weight: bold; }
+        .radio-group input[type="radio"][value="O"]:checked + span { color: #2b6cb0; }
+        .radio-group input[type="radio"][value="X"]:checked + span { color: #c53030; }
+        .photo-section { display: flex; gap: 10px; margin-top: 10px; margin-bottom: 15px; }
+        .photo-box { flex: 1; }
+        .photo-box input[type="file"] { display: none; }
+        .photo-btn { display: block; width: 100%; padding: 12px 0; text-align: center; background-color: #e2e8f0; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 14px; cursor: pointer; box-sizing: border-box; }
+        .add-photo-btn { width: 100%; padding: 10px; background-color: #fff; color: #4a5568; border: 2px dashed #4a5568; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .add-photo-btn:hover { background-color: #f7fafc; }
+        textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; resize: none; }
+        .submit-btn { width: 100%; padding: 15px; background-color: #2d3748; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; margin-top: 20px; cursor: pointer; }
+        .submit-btn:hover { background-color: #1a202c; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>My Machine 점검 등록</h2>
+
+    <div class="form-group">
+        <label>실시 일자</label>
+        <input type="date" id="inspectDate" required>
+    </div>
+    
+    <div class="form-group">
+        <label>점검자</label>
+        <input type="text" id="inspectorName" placeholder="이름 또는 사번 입력" required>
+    </div>
+
+    <div class="form-group">
+        <label>담당 설비 (호기)</label>
+        <input type="text" id="machineId" placeholder="설비명 입력" required>
+    </div>
+
+    <div class="category-title">정리</div>
+    <div class="check-item"><div class="check-item-text">1. 설비주위에 물건, 전선 정리는 되어 있는가?</div><div class="radio-group"><label><input type="radio" name="item1" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item1" value="X"><span>미흡 (X)</span></label></div></div>
+    <div class="check-item"><div class="check-item-text">2. 작업대는 정리가 되어 있는가?</div><div class="radio-group"><label><input type="radio" name="item2" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item2" value="X"><span>미흡 (X)</span></label></div></div>
+
+    <div class="category-title">정돈</div>
+    <div class="check-item"><div class="check-item-text">3. 작업지도서 등 현장부착물 잘 되어 있는가?</div><div class="radio-group"><label><input type="radio" name="item3" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item3" value="X"><span>미흡 (X)</span></label></div></div>
+    <div class="check-item"><div class="check-item-text">4. 작업대는 작업하기 편하게 정돈 되어 있는가?</div><div class="radio-group"><label><input type="radio" name="item4" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item4" value="X"><span>미흡 (X)</span></label></div></div>
+
+    <div class="category-title">청소</div>
+    <div class="check-item"><div class="check-item-text">5. 설비 점검 및 주변청소는 잘 되어 있는가?</div><div class="radio-group"><label><input type="radio" name="item5" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item5" value="X"><span>미흡 (X)</span></label></div></div>
+    <div class="check-item"><div class="check-item-text">6. 바닥에 기름이나 물은 청소 되었는가?</div><div class="radio-group"><label><input type="radio" name="item6" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item6" value="X"><span>미흡 (X)</span></label></div></div>
+
+    <div class="category-title">청결</div>
+    <div class="check-item"><div class="check-item-text">7. 오일 누수 및 파손 될 결함은 없는가?</div><div class="radio-group"><label><input type="radio" name="item7" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item7" value="X"><span>미흡 (X)</span></label></div></div>
+    <div class="check-item"><div class="check-item-text">8. 각종 유류는 눈으로 보는 관리가 되고 있는가?</div><div class="radio-group"><label><input type="radio" name="item8" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item8" value="X"><span>미흡 (X)</span></label></div></div>
+
+    <div class="category-title">습관화</div>
+    <div class="check-item"><div class="check-item-text">9. 작업자의 작업복 및 안전복장은 갖추었는가?</div><div class="radio-group"><label><input type="radio" name="item9" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item9" value="X"><span>미흡 (X)</span></label></div></div>
+    <div class="check-item"><div class="check-item-text">10. 게시물은 잘 관리되고 있는가?</div><div class="radio-group"><label><input type="radio" name="item10" value="O"><span>우수 (O)</span></label><label><input type="radio" name="item10" value="X"><span>미흡 (X)</span></label></div></div>
+
+    <div id="photoContainer">
+        <div class="category-title">개선 사진 등록 (1)</div>
+        <div class="photo-section">
+            <div class="photo-box">
+                <label class="photo-btn" for="beforePhoto1">개선 전 (Before) 촬영</label>
+                <input type="file" id="beforePhoto1" accept="image/*" capture="environment">
+            </div>
+            <div class="photo-box">
+                <label class="photo-btn" for="afterPhoto1">개선 후 (After) 촬영</label>
+                <input type="file" id="afterPhoto1" accept="image/*" capture="environment">
+            </div>
+        </div>
+    </div>
+    
+    <button type="button" class="add-photo-btn" onclick="addPhotoSection()">사진 세트 추가</button>
+
+    <div class="category-title">이슈 및 요청사항 (비고란)</div>
+    <div class="form-group">
+        <textarea id="issueRemarks" placeholder="미흡(X) 항목에 대한 사유, 현장 개선 요청사항, 특이사항 등을 기록해주세요."></textarea>
+    </div>
+
+    <button class="submit-btn" onclick="submitData()">점검 결과 등록</button>
+</div>
+
+<script>
+    // 전달해주신 웹 앱 URL 적용
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwFjY09bllcmLwvu71zXbQ3Fyt-VLSVRbqbE6BAT1-d33mm4F1_REg6eiL5jU7aVJIA/exec"; 
+
+    document.getElementById('inspectDate').valueAsDate = new Date();
+    
+    let photoCount = 1;
+    function addPhotoSection() {
+        photoCount++;
+        const container = document.getElementById('photoContainer');
+        const newSection = document.createElement('div');
+        newSection.innerHTML = `
+            <div class="category-title">개선 사진 등록 (${photoCount})</div>
+            <div class="photo-section">
+                <div class="photo-box">
+                    <label class="photo-btn" for="beforePhoto${photoCount}">개선 전 (Before) 촬영</label>
+                    <input type="file" id="beforePhoto${photoCount}" accept="image/*" capture="environment">
+                </div>
+                <div class="photo-box">
+                    <label class="photo-btn" for="afterPhoto${photoCount}">개선 후 (After) 촬영</label>
+                    <input type="file" id="afterPhoto${photoCount}" accept="image/*" capture="environment">
+                </div>
+            </div>
+        `;
+        container.appendChild(newSection);
+    }
+
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    async function submitData() {
+        if (!WEB_APP_URL) {
+            alert("스크립트 코드에 웹 앱 URL이 없습니다.");
+            return;
+        }
+
+        const data = {
+            inspectDate: document.getElementById('inspectDate').value,
+            inspectorName: document.getElementById('inspectorName').value,
+            machineId: document.getElementById('machineId').value,
+            issueRemarks: document.getElementById('issueRemarks').value,
+            photos: []
+        };
+
+        if (!data.inspectDate || !data.inspectorName || !data.machineId) {
+            alert("일자, 점검자, 담당 설비 정보를 모두 입력해주세요.");
+            return;
+        }
+
+        for(let i=1; i<=10; i++) {
+            const radio = document.querySelector('input[name="item'+i+'"]:checked');
+            data['item'+i] = radio ? radio.value : "";
+        }
+
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        
+        const btn = document.querySelector('.submit-btn');
+        btn.innerText = "데이터 전송 중...";
+        btn.disabled = true;
+
+        try {
+            for (let input of fileInputs) {
+                if (input.files.length > 0) {
+                    const file = input.files[0];
+                    const base64 = await getBase64(file);
+                    data.photos.push({
+                        mimeType: file.type,
+                        base64: base64
+                    });
+                }
+            }
+
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.status === "success") {
+                alert("점검 결과가 시스템에 등록되었습니다.");
+                window.location.reload(); 
+            } else {
+                alert("등록 중 오류가 발생했습니다: " + result.message);
+                btn.innerText = "점검 결과 등록";
+                btn.disabled = false;
+            }
+        } catch (error) {
+            alert("네트워크 통신 오류가 발생했습니다. 브라우저 환경을 확인해주세요.");
+            btn.innerText = "점검 결과 등록";
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
