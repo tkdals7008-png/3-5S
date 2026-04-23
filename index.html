@@ -23,7 +23,8 @@
         .photo-section { display: flex; gap: 10px; margin-top: 10px; margin-bottom: 15px; }
         .photo-box { flex: 1; display: flex; flex-direction: column; }
         .photo-box input[type="file"] { display: none; }
-        .photo-btn { display: block; width: 100%; padding: 12px 0; text-align: center; background-color: #e2e8f0; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 14px; cursor: pointer; box-sizing: border-box; }
+        .photo-btn { display: block; width: 100%; padding: 12px 0; text-align: center; background-color: #e2e8f0; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; box-sizing: border-box; }
+        .photo-btn:hover { background-color: #cbd5e0; }
         .img-preview { width: 100%; height: auto; max-height: 200px; object-fit: cover; display: none; margin-top: 10px; border: 1px solid #cbd5e0; border-radius: 4px; }
         .add-photo-btn { width: 100%; padding: 10px; background-color: #fff; color: #4a5568; border: 2px dashed #4a5568; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 5px; }
         .add-photo-btn:hover { background-color: #f7fafc; }
@@ -76,13 +77,13 @@
         <div class="category-title">개선 사진 등록 (1)</div>
         <div class="photo-section">
             <div class="photo-box">
-                <label class="photo-btn" for="beforePhoto1">개선 전 (Before) 촬영</label>
-                <input type="file" id="beforePhoto1" accept="image/*" capture="environment" onchange="previewImage(this, 'previewBefore1')">
+                <label class="photo-btn" for="beforePhoto1">📷 촬영 / 앨범 (Before)</label>
+                <input type="file" id="beforePhoto1" accept="image/*" onchange="previewImage(this, 'previewBefore1')">
                 <img id="previewBefore1" class="img-preview" alt="개선 전 사진">
             </div>
             <div class="photo-box">
-                <label class="photo-btn" for="afterPhoto1">개선 후 (After) 촬영</label>
-                <input type="file" id="afterPhoto1" accept="image/*" capture="environment" onchange="previewImage(this, 'previewAfter1')">
+                <label class="photo-btn" for="afterPhoto1">📷 촬영 / 앨범 (After)</label>
+                <input type="file" id="afterPhoto1" accept="image/*" onchange="previewImage(this, 'previewAfter1')">
                 <img id="previewAfter1" class="img-preview" alt="개선 후 사진">
             </div>
         </div>
@@ -99,8 +100,8 @@
 </div>
 
 <script>
-    // 알려주신 최종 URL이 적용되어 있습니다.
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxzcRA1coVbTQZHRGHee5VofmcsLhKnC0XS9ao8CeZ_yfILDAJ6bXHLsKlQ1DVy9Aed/exec";
+    // 이전에 관리자 모드 수정 시 발급받으신 최신 URL입니다. (그대로 사용하시면 됩니다)
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzieiVRcf06FqaTn51XeeHpRAa7JBXkI65WsPfqJxnkEy372SHpnvt7wSXtu36ERy2D/exec";
 
     document.getElementById('inspectDate').valueAsDate = new Date();
     
@@ -122,7 +123,7 @@
         }
     }
 
-    // 사진 세트 추가 함수
+    // 사진 세트 추가 함수 (여기도 capture 속성 제거 완료)
     function addPhotoSection() {
         photoCount++;
         const container = document.getElementById('photoContainer');
@@ -131,13 +132,13 @@
             <div class="category-title">개선 사진 등록 (${photoCount})</div>
             <div class="photo-section">
                 <div class="photo-box">
-                    <label class="photo-btn" for="beforePhoto${photoCount}">개선 전 (Before) 촬영</label>
-                    <input type="file" id="beforePhoto${photoCount}" accept="image/*" capture="environment" onchange="previewImage(this, 'previewBefore${photoCount}')">
+                    <label class="photo-btn" for="beforePhoto${photoCount}">📷 촬영 / 앨범 (Before)</label>
+                    <input type="file" id="beforePhoto${photoCount}" accept="image/*" onchange="previewImage(this, 'previewBefore${photoCount}')">
                     <img id="previewBefore${photoCount}" class="img-preview" alt="개선 전 사진">
                 </div>
                 <div class="photo-box">
-                    <label class="photo-btn" for="afterPhoto${photoCount}">개선 후 (After) 촬영</label>
-                    <input type="file" id="afterPhoto${photoCount}" accept="image/*" capture="environment" onchange="previewImage(this, 'previewAfter${photoCount}')">
+                    <label class="photo-btn" for="afterPhoto${photoCount}">📷 촬영 / 앨범 (After)</label>
+                    <input type="file" id="afterPhoto${photoCount}" accept="image/*" onchange="previewImage(this, 'previewAfter${photoCount}')">
                     <img id="previewAfter${photoCount}" class="img-preview" alt="개선 후 사진">
                 </div>
             </div>
