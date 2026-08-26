@@ -44,3 +44,20 @@ jobs:
 
       - name: Redeploy existing web app
         run: clasp deploy --deploymentId AKfycbygo73HP2KmbxLwMQmPAD4RYvCDphQmWgKTO3w8agJEEleoNm-LY2GamKhlsADqzVaF --description "Auto deploy from GitHub"
+
+      - name: Smoke test deployed web app
+        shell: bash
+        run: |
+          URL="https://script.google.com/macros/s/AKfycbygo73HP2KmbxLwMQmPAD4RYvCDphQmWgKTO3w8agJEEleoNm-LY2GamKhlsADqzVaF/exec"
+          echo "Testing $URL"
+          HTTP_CODE=$(curl -L -sS -o /tmp/webapp.out -w "%{http_code}" "$URL")
+          echo "HTTP $HTTP_CODE"
+          head -c 500 /tmp/webapp.out || true
+          echo
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+            exit 1
+          fi
+          if grep -qi "accounts.google.com\|ServiceLogin\|Sign in" /tmp/webapp.out; then
+            echo "Web app requires Google sign-in; public GitHub Pages cannot read it."
+            exit 1
+          fi
