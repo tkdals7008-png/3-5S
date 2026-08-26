@@ -41,3 +41,6 @@ jobs:
 
       - name: Push Code.gs to Apps Script
         run: clasp push --force
+
+      - name: Redeploy existing web app
+        run: clasp deploy --deploymentId AKfycbygo73HP2KmbxLwMQmPAD4RYvCDphQmWgKTO3w8agJEEleoNm-LY2GamKhlsADqzVaF --description "Auto deploy from GitHub"
