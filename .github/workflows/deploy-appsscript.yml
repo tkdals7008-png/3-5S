@@ -4,11 +4,13 @@ on:
   push:
     branches: [main]
     paths:
+      - "apps-script/**"
+      - ".clasp.json"
       - ".github/workflows/deploy-appsscript.yml"
   workflow_dispatch:
 
 jobs:
-  inspect:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -27,14 +29,30 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "CLASPRC_JSON secret is missing."
+            exit 1
+          fi
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           chmod 600 "$HOME/.clasprc.json"
 
-      - name: Inspect manifest from known working version 13
+      - name: Verify Apps Script target
+        run: clasp status
+
+      - name: Push latest Apps Script source
+        run: clasp push --force
+
+      - name: Redeploy web app
+        run: clasp deploy --deploymentId AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i --description "My Machine GitHub auto deploy"
+
+      - name: Verify web app HTTP and API
         shell: bash
         run: |
-          rm -rf apps-script
-          mkdir -p apps-script
-          clasp pull --versionNumber 13
-          echo '--- appsscript.json from version 13 ---'
-          cat apps-script/appsscript.json
+          URL="https://script.google.com/macros/s/AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i/exec?action=get_items"
+          HTTP_CODE=$(curl -L -sS -o /tmp/webapp.out -w "%{http_code}" "$URL")
+          echo "HTTP $HTTP_CODE"
+          head -c 600 /tmp/webapp.out || true
+          echo
+          test "$HTTP_CODE" = "200"
+          grep -q '"status":"success"' /tmp/webapp.out
+          grep -q '"items"' /tmp/webapp.out
