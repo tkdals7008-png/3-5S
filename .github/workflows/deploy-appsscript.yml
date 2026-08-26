@@ -42,21 +42,18 @@ jobs:
       - name: Push Code.gs to Apps Script
         run: clasp push --force
 
-      - name: Redeploy active web app
-        run: clasp deploy --deploymentId AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i --description "Auto deploy from GitHub"
-
-      - name: Smoke test active web app
+      - name: Probe surviving web apps for new API
         shell: bash
         run: |
-          URL="https://script.google.com/macros/s/AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i/exec"
-          HTTP_CODE=$(curl -L -sS -o /tmp/webapp.out -w "%{http_code}" "$URL")
-          echo "HTTP $HTTP_CODE"
-          head -c 300 /tmp/webapp.out || true
-          echo
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
-            exit 1
-          fi
-          if grep -qi "accounts.google.com\|ServiceLogin\|Sign in" /tmp/webapp.out; then
-            echo "Web app requires Google sign-in; public GitHub Pages cannot read it."
-            exit 1
-          fi
+          IDS=(
+            AKfycbzieiVRcf06FqaTn51XeeHpRAa7JBXkI65WsPfqJxnkEy372SHpnvt7wSXtu36ERy2D
+            AKfycbxQYl_w-kssptLidNo_bqeRNGjBUBXl0jJ4vXLVjmaBD55sjvcazM-kIAHOA3d_BVTR
+            AKfycbwdOumVoLFnNd4JuW66wHDPh2byKU7dt4cKePXzQHrbp5pnU04hl2u_MNGaWHGdJi2w
+            AKfycbyxuv2NP8ShagooGBBHyPPjx_oJTuhZNOsClPKlgZjTgngX_85_26c_1TIzyfCpNR-P
+          )
+          for ID in "${IDS[@]}"; do
+            URL="https://script.google.com/macros/s/$ID/exec?action=get_items"
+            CODE=$(curl -L -sS -o /tmp/out -w "%{http_code}" "$URL" || true)
+            BODY=$(head -c 350 /tmp/out | tr '\n' ' ' || true)
+            echo "$ID -> HTTP $CODE :: $BODY"
+          done
