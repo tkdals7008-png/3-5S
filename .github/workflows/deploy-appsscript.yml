@@ -42,5 +42,26 @@ jobs:
       - name: List existing deployments
         run: clasp deployments
 
+      - name: Probe deployment URLs
+        shell: bash
+        run: |
+          IDS=(
+            AKfycbyVP-WKx0GKr0wJttzO2Divo6iRjD_Dz5JLei7CDAM
+            AKfycbyKinMhIJuymuWzBGCXkpv9iYta3VMtc5MK9L3L0NEnFhRMJ9lhDYK0eLKL3NfTdrnI
+            AKfycbzieiVRcf06FqaTn51XeeHpRAa7JBXkI65WsPfqJxnkEy372SHpnvt7wSXtu36ERy2D
+            AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i
+            AKfycbxQYl_w-kssptLidNo_bqeRNGjBUBXl0jJ4vXLVjmaBD55sjvcazM-kIAHOA3d_BVTR
+            AKfycbwdOumVoLFnNd4JuW66wHDPh2byKU7dt4cKePXzQHrbp5pnU04hl2u_MNGaWHGdJi2w
+            AKfycbygo73HP2KmbxLwMQmPAD4RYvCDphQmWgKTO3w8agJEEleoNm-LY2GamKhlsADqzVaF
+            AKfycbxzcRA1coVbTQZHRGHee5VofmcsLhKnC0XS9ao8CeZ_yfILDAJ6bXHLsKlQ1DVy9Aed
+            AKfycbyxuv2NP8ShagooGBBHyPPjx_oJTuhZNOsClPKlgZjTgngX_85_26c_1TIzyfCpNR-P
+          )
+          for ID in "${IDS[@]}"; do
+            URL="https://script.google.com/macros/s/$ID/exec"
+            CODE=$(curl -L -sS -o /tmp/out -w "%{http_code}" "$URL" || true)
+            PREFIX=$(head -c 120 /tmp/out | tr '\n' ' ' || true)
+            echo "$ID -> HTTP $CODE :: $PREFIX"
+          done
+
       - name: Push Code.gs to Apps Script
         run: clasp push --force
