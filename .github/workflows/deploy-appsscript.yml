@@ -4,13 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "apps-script/**"
-      - ".clasp.json"
       - ".github/workflows/deploy-appsscript.yml"
   workflow_dispatch:
 
 jobs:
-  deploy:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,31 +27,14 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
-          if [ -z "$CLASPRC_JSON" ]; then
-            echo "CLASPRC_JSON secret is missing."
-            exit 1
-          fi
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           chmod 600 "$HOME/.clasprc.json"
 
-      - name: Verify Apps Script target
-        run: clasp status
-
-      - name: Push Code.gs to Apps Script
-        run: clasp push --force
-
-      - name: Probe surviving web apps for new API
+      - name: Inspect manifest from known working version 13
         shell: bash
         run: |
-          IDS=(
-            AKfycbzieiVRcf06FqaTn51XeeHpRAa7JBXkI65WsPfqJxnkEy372SHpnvt7wSXtu36ERy2D
-            AKfycbxQYl_w-kssptLidNo_bqeRNGjBUBXl0jJ4vXLVjmaBD55sjvcazM-kIAHOA3d_BVTR
-            AKfycbwdOumVoLFnNd4JuW66wHDPh2byKU7dt4cKePXzQHrbp5pnU04hl2u_MNGaWHGdJi2w
-            AKfycbyxuv2NP8ShagooGBBHyPPjx_oJTuhZNOsClPKlgZjTgngX_85_26c_1TIzyfCpNR-P
-          )
-          for ID in "${IDS[@]}"; do
-            URL="https://script.google.com/macros/s/$ID/exec?action=get_items"
-            CODE=$(curl -L -sS -o /tmp/out -w "%{http_code}" "$URL" || true)
-            BODY=$(head -c 350 /tmp/out | tr '\n' ' ' || true)
-            echo "$ID -> HTTP $CODE :: $BODY"
-          done
+          rm -rf apps-script
+          mkdir -p apps-script
+          clasp pull --versionNumber 13
+          echo '--- appsscript.json from version 13 ---'
+          cat apps-script/appsscript.json
