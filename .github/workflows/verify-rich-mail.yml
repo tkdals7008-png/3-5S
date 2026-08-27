@@ -1,0 +1,35 @@
+name: Verify Rich Mail
+
+on:
+  push:
+    paths:
+      - "admin_mail_rich.js"
+      - "admin.html"
+      - "apps-script/Code.gs"
+      - "apps-script/RichMail.gs"
+      - ".github/workflows/verify-rich-mail.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check browser JavaScript syntax
+        run: node --check admin_mail_rich.js
+      - name: Check Apps Script JavaScript syntax
+        run: |
+          cp apps-script/Code.gs /tmp/Code.js
+          cp apps-script/RichMail.gs /tmp/RichMail.js
+          cp apps-script/MailPermission.gs /tmp/MailPermission.js
+          node --check /tmp/Code.js
+          node --check /tmp/RichMail.js
+          node --check /tmp/MailPermission.js
+      - name: Verify rich mail integration markers
+        run: |
+          grep -q "admin_mail_rich.js" admin.html
+          grep -q "html2canvas" admin.html
+          grep -q "jspdf" admin.html
+          grep -q "sendRichReportEmail_" apps-script/Code.gs
+          grep -q "inlineImages" apps-script/RichMail.gs
+          grep -q "attachments" apps-script/RichMail.gs
