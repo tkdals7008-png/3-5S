@@ -37,16 +37,7 @@ function doPost(e) {
     }
 
     if (d.action === "send_report_email") {
-      var rs = (Array.isArray(d.recipients) ? d.recipients : [])
-        .map(String).map(function(x){ return x.trim(); }).filter(Boolean);
-      if (!rs.length) return jsonResponse({status:"error", message:"메일 수신자가 없습니다."});
-      MailApp.sendEmail({
-        to: rs.join(","),
-        subject: d.subject || "[My Machine] 3정5S 점검 결과",
-        body: d.body || "My Machine 점검 결과입니다.",
-        name: "My Machine"
-      });
-      return jsonResponse({status:"success", sentCount:rs.length});
+      return sendRichReportEmail_(d);
     }
 
     var s = getDataSheet_();
