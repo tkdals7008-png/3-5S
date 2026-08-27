@@ -1,0 +1,39 @@
+name: Test My Machine Mail Once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/test-mail-once.yml"
+  workflow_dispatch:
+
+jobs:
+  test-mail:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read saved recipients and send test mail
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://script.google.com/macros/s/AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i/exec"
+          SETTINGS=$(curl -fsSL "$BASE?action=get_admin_settings")
+          RECIPIENTS=$(printf '%s' "$SETTINGS" | jq -c '[.settings.mails[]? | select(.active != false and (.email|length)>0) | .email]')
+          COUNT=$(printf '%s' "$RECIPIENTS" | jq 'length')
+          if [ "$COUNT" -lt 1 ]; then
+            echo "ERROR: no active saved recipients"
+            exit 2
+          fi
+          PAYLOAD=$(jq -nc --argjson recipients "$RECIPIENTS" '{action:"send_report_email",recipients:$recipients,subject:"[My Machine] 자동 메일 발송 테스트",body:"My Machine 관리자 시스템 메일 발송 정상화 테스트입니다. 이 메일이 도착하면 Apps Script 실제 발송 경로가 정상입니다."}')
+          RESP=$(curl -fsSL -X POST -H 'Content-Type: text/plain;charset=utf-8' --data "$PAYLOAD" "$BASE")
+          STATUS=$(printf '%s' "$RESP" | jq -r '.status // ""')
+          SENT=$(printf '%s' "$RESP" | jq -r '.sentCount // 0')
+          echo "saved_recipients=$COUNT"
+          echo "server_status=$STATUS"
+          echo "sent_count=$SENT"
+          if [ "$STATUS" != "success" ]; then
+            printf '%s' "$RESP" | jq '{status,message}'
+            exit 3
+          fi
+          if [ "$SENT" -ne "$COUNT" ]; then
+            echo "ERROR: sent count mismatch"
+            exit 4
+          fi
