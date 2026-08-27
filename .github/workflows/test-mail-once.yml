@@ -18,15 +18,17 @@ jobs:
           SETTINGS=$(curl -fsSL "$BASE?action=get_admin_settings")
           RECIPIENTS=$(printf '%s' "$SETTINGS" | jq -c '[.settings.mails[]? | select(.active != false and (.email|length)>0) | .email]')
           COUNT=$(printf '%s' "$RECIPIENTS" | jq 'length')
+          MACHINES=$(printf '%s' "$SETTINGS" | jq '[.settings.machines[]?] | length')
+          echo "saved_machines=$MACHINES"
+          echo "saved_active_recipients=$COUNT"
           if [ "$COUNT" -lt 1 ]; then
             echo "ERROR: no active saved recipients"
             exit 2
           fi
           PAYLOAD=$(jq -nc --argjson recipients "$RECIPIENTS" '{action:"send_report_email",recipients:$recipients,subject:"[My Machine] 자동 메일 발송 테스트",body:"My Machine 관리자 시스템 메일 발송 정상화 테스트입니다. 이 메일이 도착하면 Apps Script 실제 발송 경로가 정상입니다."}')
-          RESP=$(curl -fsSL -X POST -H 'Content-Type: text/plain;charset=utf-8' --data "$PAYLOAD" "$BASE")
+          RESP=$(curl -fsSL -H 'Content-Type: text/plain;charset=utf-8' --data "$PAYLOAD" "$BASE")
           STATUS=$(printf '%s' "$RESP" | jq -r '.status // ""')
           SENT=$(printf '%s' "$RESP" | jq -r '.sentCount // 0')
-          echo "saved_recipients=$COUNT"
           echo "server_status=$STATUS"
           echo "sent_count=$SENT"
           if [ "$STATUS" != "success" ]; then
