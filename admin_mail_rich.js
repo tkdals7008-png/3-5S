@@ -1,0 +1,173 @@
+(function(){
+  const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  async function readJsonResponse(res,label){
+    const txt=await res.text();
+    let obj;
+    try{obj=JSON.parse(txt);}catch(e){
+      throw new Error(label+' 응답 형식 오류 (HTTP '+res.status+'): '+txt.slice(0,180));
+    }
+    if(!res.ok) throw new Error(label+' HTTP 오류: '+res.status);
+    return obj;
+  }
+
+  async function persistCurrentSettings(){
+    if(typeof collectSettings==='function') collectSettings();
+    localStorage.setItem('mymachine_v3_settings',JSON.stringify(settings));
+    const res=await fetch(WEB_APP_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'save_admin_settings',machines:settings.machines||[],mails:settings.mails||[]})
+    });
+    const o=await readJsonResponse(res,'메일 설정 저장');
+    if(!o||o.status!=='success') throw new Error(o&&o.message||'메일 설정 서버 저장 실패');
+  }
+
+  async function getVerifiedRecipients(){
+    const res=await fetch(WEB_APP_URL+'?action=get_admin_settings&_='+Date.now(),{cache:'no-store'});
+    const o=await readJsonResponse(res,'메일 수신자 조회');
+    if(!o||o.status!=='success'||!o.settings) throw new Error(o&&o.message||'메일 수신자 서버 조회 실패');
+    const mails=Array.isArray(o.settings.mails)?o.settings.mails:[];
+    const active=mails.filter(m=>m&&m.active!==false&&String(m.email||'').trim());
+    if(!active.length) throw new Error('사용 체크된 메일 수신자가 없습니다.');
+    const invalid=active.filter(m=>!EMAIL_RE.test(String(m.email).trim()));
+    if(invalid.length) throw new Error('메일주소 형식 오류: '+invalid.map(m=>(m.name||'이름없음')+' <'+m.email+'>').join(', '));
+    return active.map(m=>String(m.email).trim());
+  }
+
+  function makeCaptureNode(){
+    const report=document.getElementById('reportContent');
+    if(!report||!report.classList.contains('visible')) throw new Error('먼저 실데이터 조회 후 보고서를 표시해 주세요.');
+
+    const host=document.createElement('div');
+    host.id='mailCaptureHost';
+    host.style.position='fixed';
+    host.style.left='-20000px';
+    host.style.top='0';
+    host.style.width='1200px';
+    host.style.background='#f3f6fb';
+    host.style.padding='16px';
+    host.style.zIndex='-1';
+
+    const wrap=document.createElement('div');
+    wrap.className='wrap';
+    wrap.style.maxWidth='1200px';
+    wrap.style.margin='0 auto';
+    wrap.style.padding='0';
+
+    const head=document.querySelector('.head');
+    if(head) wrap.appendChild(head.cloneNode(true));
+
+    const rc=report.cloneNode(true);
+    rc.classList.add('visible');
+    rc.style.display='block';
+    rc.querySelectorAll('.noPrint,.modal,button,input,select').forEach(el=>el.remove());
+    rc.querySelectorAll('[style*="display:none"]').forEach(el=>{
+      if(el.classList.contains('report-content')) el.style.display='block';
+    });
+    wrap.appendChild(rc);
+    host.appendChild(wrap);
+    document.body.appendChild(host);
+    return host;
+  }
+
+  async function captureReport(){
+    if(!window.html2canvas) throw new Error('보고서 이미지 생성 라이브러리가 로드되지 않았습니다. 새로고침 후 다시 시도해 주세요.');
+    const host=makeCaptureNode();
+    try{
+      await new Promise(r=>setTimeout(r,120));
+      const canvas=await html2canvas(host,{backgroundColor:'#f3f6fb',scale:1.25,useCORS:true,allowTaint:false,logging:false,windowWidth:1232});
+      if(!canvas.width||!canvas.height) throw new Error('보고서 이미지 생성에 실패했습니다.');
+      return canvas;
+    }finally{
+      host.remove();
+    }
+  }
+
+  function resizedJpeg(canvas,maxWidth,quality){
+    const scale=Math.min(1,maxWidth/canvas.width);
+    const out=document.createElement('canvas');
+    out.width=Math.max(1,Math.round(canvas.width*scale));
+    out.height=Math.max(1,Math.round(canvas.height*scale));
+    const ctx=out.getContext('2d');
+    ctx.fillStyle='#f3f6fb';
+    ctx.fillRect(0,0,out.width,out.height);
+    ctx.drawImage(canvas,0,0,out.width,out.height);
+    return out.toDataURL('image/jpeg',quality);
+  }
+
+  function makePdfBase64(jpegDataUrl,canvas){
+    if(!window.jspdf||!window.jspdf.jsPDF) throw new Error('PDF 생성 라이브러리가 로드되지 않았습니다. 새로고침 후 다시 시도해 주세요.');
+    const pdf=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4',compress:true});
+    const pageW=pdf.internal.pageSize.getWidth();
+    const pageH=pdf.internal.pageSize.getHeight();
+    const margin=7;
+    const imgW=pageW-margin*2;
+    const imgH=canvas.height*imgW/canvas.width;
+    const printableH=pageH-margin*2;
+    const pages=Math.max(1,Math.ceil(imgH/printableH));
+    for(let p=0;p<pages;p++){
+      if(p>0) pdf.addPage('a4','landscape');
+      const y=margin-(p*printableH);
+      pdf.addImage(jpegDataUrl,'JPEG',margin,y,imgW,imgH,undefined,'FAST');
+    }
+    const dataUri=pdf.output('datauristring');
+    return dataUri.split(',')[1];
+  }
+
+  function safeName(s){return String(s||'').replace(/[^0-9A-Za-z가-힣._-]+/g,'_');}
+
+  window.sendMail=async function(){
+    if(typeof isAdminAuthed==='function'&&!isAdminAuthed()) return openAdminLogin();
+    const btn=[...document.querySelectorAll('button')].find(b=>b.textContent.includes('보고서 메일 발송'));
+    const old=btn?btn.textContent:'';
+    if(btn){btn.disabled=true;btn.textContent='보고서 생성 중...';}
+    try{
+      await persistCurrentSettings();
+      const recipients=await getVerifiedRecipients();
+      const period=(document.getElementById('monthPicker')&&document.getElementById('monthPicker').value)||new Date().toISOString().slice(0,7);
+      if(!confirm(period+' My Machine 보고서를\n'+recipients.length+'명에게 발송하시겠습니까?\n\n메일 본문: 컬러 보고서 이미지\n첨부파일: PDF 보고서')) return;
+
+      const canvas=await captureReport();
+      if(btn) btn.textContent='PDF 생성 중...';
+      const reportImageDataUrl=resizedJpeg(canvas,1000,0.76);
+      const pdfJpegDataUrl=resizedJpeg(canvas,1500,0.80);
+      const pdfBase64=makePdfBase64(pdfJpegDataUrl,canvas);
+      const imageBase64=reportImageDataUrl.split(',')[1];
+
+      const base=safeName('MyMachine_'+period+'_3정5S_점검결과');
+      const payload={
+        action:'send_report_email',
+        recipients,
+        subject:'[My Machine] '+period+' 3정5S 점검 결과',
+        body:'My Machine 3정5S 점검 결과입니다. 메일 본문의 컬러 보고서 이미지와 첨부 PDF를 확인해 주세요.',
+        reportImageBase64:imageBase64,
+        reportImageMimeType:'image/jpeg',
+        reportImageName:base+'.jpg',
+        reportPdfBase64:pdfBase64,
+        reportPdfName:base+'.pdf'
+      };
+
+      const approxMB=(imageBase64.length+pdfBase64.length)*0.75/1024/1024;
+      if(approxMB>18) throw new Error('보고서 파일 용량이 너무 큽니다 ('+approxMB.toFixed(1)+'MB). 사진 수를 줄인 뒤 다시 시도해 주세요.');
+
+      if(btn) btn.textContent='메일 발송 중...';
+      const res=await fetch(WEB_APP_URL,{
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(payload)
+      });
+      const result=await readJsonResponse(res,'메일 발송');
+      if(result.status!=='success') throw new Error(result.message||'Apps Script 메일 발송 실패');
+      if(Number(result.sentCount||0)!==recipients.length) throw new Error('발송 건수 불일치: 요청 '+recipients.length+'명 / 서버 '+(result.sentCount||0)+'명');
+      if(!result.pdfAttached||!result.inlineImage) throw new Error('서버에서 PDF/본문 이미지 첨부 확인 응답을 받지 못했습니다.');
+
+      alert('메일 발송 완료\n수신자: '+recipients.length+'명\n메일 본문: 컬러 보고서 이미지\n첨부파일: PDF 보고서');
+    }catch(err){
+      console.error('My Machine rich mail error',err);
+      alert('메일 발송 오류\n'+err.message);
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=old||'보고서 메일 발송';}
+    }
+  };
+})();
