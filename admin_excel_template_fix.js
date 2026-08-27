@@ -1,11 +1,15 @@
 (function(){
-  function safeCell(v){
-    return String(v ?? '').replace(/\t/g,' ').replace(/\r?\n/g,' ');
+  function csvCell(v){
+    const s=String(v ?? '').replace(/\r?\n/g,' ');
+    return '"'+s.replace(/"/g,'""')+'"';
   }
 
-  window.downloadExcelTsv=function(filename,headers,rows){
-    const text='\ufeff'+headers.map(safeCell).join('\t')+'\r\n'+rows.map(r=>r.map(safeCell).join('\t')).join('\r\n');
-    const blob=new Blob([text],{type:'text/tab-separated-values;charset=utf-8;'});
+  // Excel에서 더블클릭 시 바로 열리고 열 구분이 유지되도록 sep=, 지시자를 포함한 UTF-8 CSV 생성
+  window.downloadExcelCsv=function(filename,headers,rows){
+    const lines=['sep=,',headers.map(csvCell).join(',')]
+      .concat(rows.map(r=>r.map(csvCell).join(',')));
+    const text='\ufeff'+lines.join('\r\n');
+    const blob=new Blob([text],{type:'text/csv;charset=utf-8;'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
@@ -18,7 +22,7 @@
 
   window.downloadMachineTemplate=function(){
     if(typeof collectSettings==='function') collectSettings();
-    downloadExcelTsv('MyMachine_설비마스터_Excel용.tsv',
+    downloadExcelCsv('MyMachine_설비마스터_Excel용.csv',
       ['사용','호기','메이커','톤수','담당팀','담당자'],
       (settings.machines||[]).map(m=>[m.active!==false?'Y':'N',m.machine||'',m.maker||'',m.ton||'',m.team||'',m.owner||''])
     );
@@ -26,7 +30,7 @@
 
   window.downloadMailTemplate=function(){
     if(typeof collectSettings==='function') collectSettings();
-    downloadExcelTsv('MyMachine_메일설정_Excel용.tsv',
+    downloadExcelCsv('MyMachine_메일설정_Excel용.csv',
       ['사용','이름','메일주소'],
       (settings.mails||[]).map(m=>[m.active!==false?'Y':'N',m.name||'',m.email||''])
     );
@@ -34,7 +38,8 @@
 
   window.parseDelimited=function(t){
     t=(t||'').replace(/^\ufeff/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-    const lines=t.split('\n').filter(l=>l.trim()!=='');
+    let lines=t.split('\n').filter(l=>l.trim()!=='');
+    if(lines[0] && /^sep=./i.test(lines[0].trim())) lines=lines.slice(1);
     if(!lines.length) return [];
     const first=lines[0];
     const counts={tab:(first.match(/\t/g)||[]).length,comma:(first.match(/,/g)||[]).length,semi:(first.match(/;/g)||[]).length};
@@ -57,6 +62,6 @@
   };
 
   document.querySelectorAll('#machineSection input[type=file],#mailSection input[type=file]').forEach(el=>{
-    el.setAttribute('accept','.tsv,.csv,.txt,text/tab-separated-values,text/csv,text/plain');
+    el.setAttribute('accept','.csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain');
   });
 })();
