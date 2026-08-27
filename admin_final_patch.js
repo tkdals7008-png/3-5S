@@ -22,6 +22,53 @@
     }
   }
 
+  function installTeamTotal(){
+    if(typeof window.renderTeams!=='function'||typeof window.activeMachines!=='function'||typeof window.splitInspectors!=='function') return;
+
+    window.renderTeams=function(){
+      let teams={};
+      activeMachines().forEach(m=>{
+        let t=m.team||'미지정';
+        (teams[t]??={machines:[],owners:new Set(),participants:new Set(),req:0}).machines.push(m);
+        if(m.owner) teams[t].owners.add(m.owner);
+      });
+
+      reportRows.forEach(r=>{
+        let t=r.team||'미지정';
+        if(!teams[t]) teams[t]={machines:[],owners:new Set(),participants:new Set(),req:0};
+        if(r.status==='done'||r.status==='unknown'){
+          (r.records||[r]).forEach(rec=>splitInspectors(rec.inspector).forEach(n=>teams[t].participants.add(n)));
+        }
+        teams[t].req+=(r.actions||[]).filter(a=>a.type==='request').length;
+      });
+
+      let totalMachines=0,totalOwners=0,totalDone=0,totalMissing=0,totalReq=0;
+      const allParticipants=new Set(),allNonParticipants=new Set();
+
+      let rows=Object.entries(teams).map(([t,o])=>{
+        let participants=[...o.participants].filter(Boolean);
+        let owners=[...o.owners].filter(Boolean);
+        let non=owners.filter(n=>!o.participants.has(n));
+        let doneMachines=reportRows.filter(r=>(r.team||'미지정')===t&&r.status==='done').length;
+        let missing=Math.max(o.machines.length-doneMachines,0);
+
+        totalMachines+=o.machines.length;
+        totalOwners+=owners.length;
+        totalDone+=doneMachines;
+        totalMissing+=missing;
+        totalReq+=o.req;
+        participants.forEach(n=>allParticipants.add(n));
+        non.forEach(n=>allNonParticipants.add(n));
+
+        return `<tr><td>${t}</td><td>${o.machines.length}</td><td>${owners.length}</td><td>${doneMachines}</td><td>${missing}</td><td class="left"><b>${participants.length}명</b><br>${participants.join(', ')||'-'}</td><td class="left"><b>${non.length}명</b><br>${non.join(', ')||'-'}</td><td>${o.req}</td><td>${o.req?'-':'100%'}</td></tr>`;
+      }).join('');
+
+      const totalRate=totalReq?'-':'100%';
+      rows+=`<tr class="team-total-row" style="font-weight:900;background:#eaf2fb;border-top:3px solid #123a66"><td>합계</td><td>${totalMachines}</td><td>${totalOwners}</td><td>${totalDone}</td><td>${totalMissing}</td><td class="left"><b>${allParticipants.size}명</b><br>${[...allParticipants].join(', ')||'-'}</td><td class="left"><b>${allNonParticipants.size}명</b><br>${[...allNonParticipants].join(', ')||'-'}</td><td>${totalReq}</td><td>${totalRate}</td></tr>`;
+      teamBody.innerHTML=rows;
+    };
+  }
+
   function loadScript(src,test){
     return new Promise((resolve,reject)=>{
       if(test()) return resolve();
@@ -44,12 +91,13 @@
     await Promise.all(jobs);
   };
 
-  const run=()=>reorderReportSections();
+  const run=()=>{installTeamTotal();reorderReportSections();};
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run); else run();
 
   const oldCompute=window.compute;
   if(typeof oldCompute==='function'){
     window.compute=function(){
+      installTeamTotal();
       const result=oldCompute.apply(this,arguments);
       reorderReportSections();
       return result;
