@@ -2,15 +2,24 @@
   function reorderReportSections(){
     const report=document.getElementById('reportContent');
     if(!report) return;
-    const findBox=cls=>{const title=report.querySelector('.sectionTitle.'+cls);return title&&title.closest('.box');};
-    const evaluation=report.querySelector('.evaluation-panel');
-    const team=findBox('team-title');
-    const machine=findBox('machine-title');
-    const request=findBox('request-title');
-    const detail=findBox('detail-title');
-    const ordered=[evaluation,team,machine,request,detail].filter(Boolean);
-    if(ordered.length<5) return;
-    ordered.forEach(el=>report.appendChild(el));
+
+    const teamTitle=report.querySelector('.team-title');
+    const machineTitle=report.querySelector('.machine-title');
+    if(!teamTitle||!machineTitle) return;
+
+    const teamBox=teamTitle.nextElementSibling;
+    const machineBox=machineTitle.nextElementSibling;
+    if(!teamBox||!machineBox) return;
+
+    const teamH2=teamTitle.querySelector('h2');
+    const machineH2=machineTitle.querySelector('h2');
+    if(teamH2) teamH2.textContent='2. 팀별 현황';
+    if(machineH2) machineH2.textContent='3. 설비별 현황';
+
+    if(machineTitle.compareDocumentPosition(teamTitle)&Node.DOCUMENT_POSITION_FOLLOWING){
+      report.insertBefore(teamTitle,machineTitle);
+      report.insertBefore(teamBox,machineTitle);
+    }
   }
 
   function loadScript(src,test){
@@ -35,8 +44,22 @@
     await Promise.all(jobs);
   };
 
-  const run=()=>{reorderReportSections();};
+  const run=()=>reorderReportSections();
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run); else run();
+
   const oldCompute=window.compute;
-  if(typeof oldCompute==='function') window.compute=function(){const r=oldCompute.apply(this,arguments);reorderReportSections();return r;};
+  if(typeof oldCompute==='function'){
+    window.compute=function(){
+      const result=oldCompute.apply(this,arguments);
+      reorderReportSections();
+      return result;
+    };
+  }
+
+  const observer=new MutationObserver(()=>reorderReportSections());
+  const startObserver=()=>{
+    const report=document.getElementById('reportContent');
+    if(report) observer.observe(report,{childList:true,subtree:false});
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',startObserver); else startObserver();
 })();
