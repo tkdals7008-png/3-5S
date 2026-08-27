@@ -1,4 +1,4 @@
-const WEB_APP_URL='https://script.google.com/macros/s/AKfycbygo73HP2KmbxLwMQmPAD4RYvCDphQmWgKTO3w8agJEEleoNm-LY2GamKhlsADqzVaF/exec';
+const WEB_APP_URL='https://script.google.com/macros/s/AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i/exec';
 const DEF=["설비주위에 물건, 전선 정리는 되어 있는가?","작업대는 정리가 되어 있는가?","작업지도서 등 현장부착물 잘 되어 있는가?","작업대는 작업하기 편하게 정돈 되어 있는가?","설비 점검 및 주변청소는 잘 되어 있는가?","바닥에 기름이나 물은 청소 되었는가?","오일 누수 및 파손 될 결함은 없는가?","각종 유류는 눈으로 보는 관리가 되고 있는가?","작업자의 작업복 및 안전복장은 갖추었는가?","게시물은 잘 관리되고 있는가?"];
 let cfg=DEF.map((name,i)=>({no:i+1,active:true,name})),photoData={};
 function settings(){try{return JSON.parse(localStorage.getItem('mymachine_v3_settings'))||{machines:[]}}catch(e){return {machines:[]}}}
