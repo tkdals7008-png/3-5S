@@ -1,0 +1,37 @@
+name: Test Rich Mail Once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/test-rich-mail-once.yml"
+  workflow_dispatch:
+
+jobs:
+  test-rich-mail:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send inline image and PDF test using saved recipient
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://script.google.com/macros/s/AKfycbwgEHiICS2ga2XCuVYppgEGCJgJ3rAjA2jnq8Qbk1-Ol7zpwe5r2wnSw00M-ovNEB2i/exec"
+          SETTINGS=$(curl -fsSL "$BASE?action=get_admin_settings")
+          RECIPIENTS=$(printf '%s' "$SETTINGS" | jq -c '[.settings.mails[]? | select(.active != false and (.email|length)>0) | .email]')
+          COUNT=$(printf '%s' "$RECIPIENTS" | jq 'length')
+          [ "$COUNT" -ge 1 ] || { echo "No active recipients"; exit 2; }
+
+          IMG='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+          PDF=$(python3 - <<'PY'
+          import base64
+          data=b'''%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R>>endobj\n4 0 obj<</Length 44>>stream\nBT /F1 12 Tf 72 720 Td (My Machine Test) Tj ET\nendstream endobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000202 00000 n \ntrailer<</Size 5/Root 1 0 R>>\nstartxref\n296\n%%EOF'''
+          print(base64.b64encode(data).decode())
+          PY
+          )
+          PAYLOAD=$(jq -nc --argjson recipients "$RECIPIENTS" --arg img "$IMG" --arg pdf "$PDF" '{action:"send_report_email",recipients:$recipients,subject:"[My Machine] 리치메일 기능 테스트",body:"본문 이미지 및 PDF 첨부 기능 테스트",reportImageBase64:$img,reportImageMimeType:"image/png",reportImageName:"MyMachine_test.png",reportPdfBase64:$pdf,reportPdfName:"MyMachine_test.pdf"}')
+          RESP=$(curl -fsSL -H 'Content-Type: text/plain;charset=utf-8' --data "$PAYLOAD" "$BASE")
+          echo "$RESP" | jq '{status,sentCount,richMail,pdfAttached,inlineImage,message}'
+          test "$(echo "$RESP" | jq -r '.status')" = "success"
+          test "$(echo "$RESP" | jq -r '.richMail')" = "true"
+          test "$(echo "$RESP" | jq -r '.pdfAttached')" = "true"
+          test "$(echo "$RESP" | jq -r '.inlineImage')" = "true"
+          test "$(echo "$RESP" | jq -r '.sentCount')" = "$COUNT"
