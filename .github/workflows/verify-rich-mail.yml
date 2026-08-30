@@ -6,6 +6,7 @@ on:
       - "admin_mail_rich.js"
       - "admin_final_patch.js"
       - "admin_na_patch.js"
+      - "admin_ui_patch.js"
       - "admin.html"
       - "index.html"
       - "index_loader.js"
@@ -26,6 +27,7 @@ jobs:
           node --check admin_mail_rich.js
           node --check admin_final_patch.js
           node --check admin_na_patch.js
+          node --check admin_ui_patch.js
           node --check index_loader.js
           node --check index_app.js
           node --check index_na_patch.js
@@ -41,10 +43,15 @@ jobs:
         run: |
           grep -q "admin_final_patch.js" admin.html
           grep -q "admin_na_patch.js" admin.html
+          grep -q "admin_ui_patch.js" admin.html
           grep -q "admin_mail_rich.js" admin.html
           grep -q "index_na_patch.js" index_loader.js
           grep -q "value=\"N/A\"" index_na_patch.js
-          grep -q "(생산중일시)" index_na_patch.js
+          grep -q "n===7" index_na_patch.js
+          grep -q "localToday" index_na_patch.js
+          grep -q "localToday" admin_ui_patch.js
+          grep -q "moveSampleButton" admin_ui_patch.js
+          grep -q "Number(itemNo)===7" admin_na_patch.js
           grep -q "applicableCount" admin_na_patch.js
           grep -q "해당없음" admin_na_patch.js
           grep -q "2. 팀별 현황" admin_final_patch.js
