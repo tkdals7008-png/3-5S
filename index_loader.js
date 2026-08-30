@@ -7,7 +7,7 @@
   }catch(e){console.warn('설비마스터 서버 조회 실패',e);}
   function load(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error(src+' 로드 실패'));document.body.appendChild(s);});}
   try{
-    await load('index_app.js?b=20260831-0727');
-    await load('index_na_patch.js?b=20260831-0727');
+    await load('index_app.js?b=20260831-0834');
+    await load('index_na_patch.js?b=20260831-0834');
   }catch(e){console.error(e);alert('점검 화면 최신 기능을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');}
 })();
