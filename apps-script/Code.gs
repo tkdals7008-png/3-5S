@@ -67,24 +67,31 @@ function doPost(e) {
       return jsonResponse({status:"success"});
     }
 
-    var urls = [];
-    (d.photos || []).forEach(function(p, i){
-      if (p && p.base64) urls.push(savePhoto_(p, (d.inspectDate || "date") + "_" + (d.machineId || "machine") + "_photo" + (i+1)));
-    });
+    var mapped = saveItemActionPhotos_(d);
+    var urls = mapped.urls;
+    var mappedActions = mapped.actions;
+
+    if (!mappedActions.length) {
+      (d.photos || []).forEach(function(p, i){
+        if (p && p.base64) urls.push(savePhoto_(p, (d.inspectDate || "date") + "_" + (d.machineId || "machine") + "_photo" + (i+1)));
+      });
+    }
 
     var imm = Number(d.immediateCount || 0);
     var req = Number(d.requestCount || 0);
     var done = Number(d.actionCompleteCount || imm);
-    var detail = makeImprovementDetail(d);
+    var detailSource = Object.assign({}, d, {itemActionsJson:JSON.stringify(mappedActions)});
+    var detail = makeImprovementDetail(detailSource);
     var reqNo = req > 0 ? createRequestNo(s) : "";
     var snap = d.itemNamesSnapshot || JSON.stringify(getItemSettings_());
+    var actionJson = mappedActions.length ? JSON.stringify(mappedActions) : (d.itemActionsJson || "");
 
     ensureHeaders_(s);
     s.appendRow([
       d.inspectDate || "", d.inspectorName || "", d.machineId || "",
       d.item1 || "", d.item2 || "", d.item3 || "", d.item4 || "", d.item5 || "",
       d.item6 || "", d.item7 || "", d.item8 || "", d.item9 || "", d.item10 || "",
-      d.issueRemarks || "", urls.join(", "), imm, req, done, detail, reqNo, "", "", snap
+      d.issueRemarks || "", urls.join(", "), imm, req, done, detail, reqNo, "", "", snap, actionJson
     ]);
     return jsonResponse({status:"success", requestNo:reqNo});
 
@@ -123,7 +130,7 @@ function doGet(e) {
         issue:r[13] || "", photos:r[14] || "",
         immediateCount:Number(r[15] || 0), requestCount:Number(r[16] || 0), actionCompleteCount:Number(r[17] || 0),
         improvementDetail:r[18] || "", requestNo:r[19] || "", actionText:r[20] || "", actionPhoto:r[21] || "",
-        itemNamesSnapshot:r[22] || ""
+        itemNamesSnapshot:r[22] || "", itemActionsJson:r[23] || ""
       });
     }
     return jsonResponse(out);
@@ -143,7 +150,7 @@ function getDataSheet_() {
 }
 
 function ensureHeaders_(s) {
-  var h = {16:"즉시개선건수",17:"개선요청건수",18:"조치완료건수",19:"개선상세",20:"개선요청번호",21:"관리자조치내용",22:"관리자조치사진",23:"점검항목스냅샷"};
+  var h = {16:"즉시개선건수",17:"개선요청건수",18:"조치완료건수",19:"개선상세",20:"개선요청번호",21:"관리자조치내용",22:"관리자조치사진",23:"점검항목스냅샷",24:"개선상세JSON"};
   Object.keys(h).forEach(function(c){ if (!s.getRange(1,+c).getValue()) s.getRange(1,+c).setValue(h[c]); });
 }
 
@@ -237,6 +244,32 @@ function savePhoto_(p,n) {
   var f = DriveApp.getFolderById(IMAGE_FOLDER_ID);
   var b = Utilities.newBlob(Utilities.base64Decode(p.base64), p.mimeType || "image/jpeg", n);
   return f.createFile(b).getUrl();
+}
+
+function saveItemActionPhotos_(d) {
+  var actions = [];
+  try { actions = JSON.parse(d.itemActionsJson || "[]"); } catch (e) { actions = []; }
+  if (!Array.isArray(actions)) actions = [];
+  var urls = [];
+  actions.forEach(function(a, ai){
+    if (!a || typeof a !== "object") return;
+    var src = a.photos && typeof a.photos === "object" ? a.photos : {};
+    var saved = {};
+    ["immBefore","immAfter","reqBefore","reqAfter"].forEach(function(k){
+      var p = src[k];
+      if (p && p.base64) {
+        var name = (d.inspectDate || "date") + "_" + (d.machineId || "machine") + "_item" + (a.item || ai+1) + "_" + k + "_" + Date.now();
+        var u = savePhoto_(p, name);
+        saved[k] = {url:u};
+        urls.push(u);
+      } else if (p && p.url) {
+        saved[k] = {url:String(p.url)};
+        urls.push(String(p.url));
+      }
+    });
+    a.photos = saved;
+  });
+  return {actions:actions, urls:urls};
 }
 
 function makeImprovementDetail(d) {
