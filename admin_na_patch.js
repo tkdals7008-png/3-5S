@@ -3,23 +3,15 @@
   style.textContent='.b-gray{background:#eef1f5;border:1px solid #b7c0ca;color:#586675}.na-note{color:#586675;font-weight:800}';
   document.head.appendChild(style);
 
-  function isProductionOnlyName(name){
-    return String(name||'').replace(/\s+/g,'').includes('(생산중일시)');
-  }
-
+  function isProductionOnlyName(name){return String(name||'').replace(/\s+/g,'').includes('(생산중일시)');}
   function snapshotItem(r,itemNo){
-    try{
-      const raw=r.itemNamesSnapshot;
-      const arr=Array.isArray(raw)?raw:JSON.parse(raw||'[]');
-      return Array.isArray(arr)?arr.find(x=>Number(x.no)===Number(itemNo)):null;
-    }catch(e){return null;}
+    try{const raw=r.itemNamesSnapshot;const arr=Array.isArray(raw)?raw:JSON.parse(raw||'[]');return Array.isArray(arr)?arr.find(x=>Number(x.no)===Number(itemNo)):null;}catch(e){return null;}
   }
-
   function shouldShowNA(r,itemNo){
     const snap=snapshotItem(r,itemNo);
     if(snap&&snap.active===false)return false;
     const name=(snap&&snap.name)||itemNames[itemNo-1]||'';
-    return isProductionOnlyName(name);
+    return Number(itemNo)===7||isProductionOnlyName(name);
   }
 
   window.normalizeRow=function(r,i){
