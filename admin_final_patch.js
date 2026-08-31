@@ -28,7 +28,7 @@
     if(!body) return;
     const existing=body.querySelector('.team-total-row');
     if(existing) existing.remove();
-    const rows=[...body.querySelectorAll('tr')].filter(tr=>tr.children.length>=9&&!tr.classList.contains('team-total-row'));
+    const rows=[...body.querySelectorAll('tr')].filter(tr=>tr.children.length>=10&&!tr.classList.contains('team-total-row'));
     if(!rows.length) return;
     let machines=0,owners=0,done=0,missing=0,participants=0,nonParticipants=0,requests=0;
     rows.forEach(tr=>{
@@ -39,13 +39,14 @@
       missing+=numCell(c[4]);
       participants+=numCell(c[5]);
       nonParticipants+=numCell(c[6]);
-      requests+=numCell(c[7]);
+      requests+=numCell(c[8]);
     });
-    const rate=requests===0?'100%':'-';
+    const participationRate=owners?Math.min(100,participants/owners*100).toFixed(1)+'%':'-';
+    const actionRate=requests===0?'100%':'-';
     const tr=document.createElement('tr');
     tr.className='team-total-row';
     tr.style.cssText='font-weight:900;background:#eaf2fb;border-top:3px solid #123a66';
-    tr.innerHTML=`<td>합계</td><td>${machines}</td><td>${owners}</td><td>${done}</td><td>${missing}</td><td><b>${participants}명</b></td><td><b>${nonParticipants}명</b></td><td>${requests}</td><td>${rate}</td>`;
+    tr.innerHTML=`<td>합계</td><td>${machines}</td><td>${owners}</td><td>${done}</td><td>${missing}</td><td><b>${participants}명</b></td><td><b>${nonParticipants}명</b></td><td><b>${participationRate}</b></td><td>${requests}</td><td>${actionRate}</td>`;
     body.appendChild(tr);
   }
 
