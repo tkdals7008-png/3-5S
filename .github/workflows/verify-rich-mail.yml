@@ -7,6 +7,7 @@ on:
       - "admin_final_patch.js"
       - "admin_na_patch.js"
       - "admin_ui_patch.js"
+      - "admin_improvement_patch.js"
       - "admin.html"
       - "index.html"
       - "index_loader.js"
@@ -28,6 +29,7 @@ jobs:
           node --check admin_final_patch.js
           node --check admin_na_patch.js
           node --check admin_ui_patch.js
+          node --check admin_improvement_patch.js
           node --check index_loader.js
           node --check index_app.js
           node --check index_na_patch.js
@@ -44,6 +46,7 @@ jobs:
           grep -q "admin_final_patch.js" admin.html
           grep -q "admin_na_patch.js" admin.html
           grep -q "admin_ui_patch.js" admin.html
+          grep -q "admin_improvement_patch.js" admin.html
           grep -q "admin_mail_rich.js" admin.html
           grep -q "index_na_patch.js" index_loader.js
           grep -q "value=\"N/A\"" index_na_patch.js
@@ -55,6 +58,13 @@ jobs:
           grep -q "a.type!=='na'" admin_na_patch.js
           grep -q "white-space:nowrap" admin_na_patch.js
           grep -q "nth-child(5).*text-align:left" admin_na_patch.js
+          grep -q "#reportContent table thead th" admin_improvement_patch.js
+          grep -q "#requestBody td:nth-child(4).*text-align:left" admin_improvement_patch.js
+          grep -q "개선전" admin_improvement_patch.js
+          grep -q "개선후" admin_improvement_patch.js
+          grep -q "update_admin" admin_improvement_patch.js
+          grep -q "사진 저장 + 완료" admin_improvement_patch.js
+          grep -q "MM_REQ_ADMIN_V1" admin_improvement_patch.js
           grep -q "2. 팀별 현황" admin_final_patch.js
           grep -q "3. 설비별 현황" admin_final_patch.js
           grep -q "ensureReportLibraries" admin_final_patch.js
