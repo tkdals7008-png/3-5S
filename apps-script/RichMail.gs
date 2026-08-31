@@ -1,8 +1,15 @@
 function sendRichReportEmail_(d) {
+  var seen = {};
   var rs = (Array.isArray(d.recipients) ? d.recipients : [])
     .map(String)
     .map(function(x){ return x.trim(); })
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(function(x){
+      var k = x.toLowerCase();
+      if (seen[k]) return false;
+      seen[k] = true;
+      return true;
+    });
 
   if (!rs.length) {
     return jsonResponse({status:'error', message:'메일 수신자가 없습니다.'});
@@ -47,19 +54,26 @@ function sendRichReportEmail_(d) {
     '</div>'
   ].join('');
 
-  MailApp.sendEmail({
-    to: rs.join(','),
-    subject: title,
-    body: d.body || 'My Machine 3정5S 점검 결과입니다. 메일 본문의 보고서 이미지와 첨부 PDF를 확인해 주세요.',
-    htmlBody: htmlBody,
-    inlineImages: { reportImage: imageBlob },
-    attachments: [pdfBlob],
-    name: 'My Machine'
-  });
+  var batchSize = 40;
+  var batches = 0;
+  for (var i = 0; i < rs.length; i += batchSize) {
+    var batch = rs.slice(i, i + batchSize);
+    MailApp.sendEmail({
+      to: batch.join(','),
+      subject: title,
+      body: d.body || 'My Machine 3정5S 점검 결과입니다. 메일 본문의 보고서 이미지와 첨부 PDF를 확인해 주세요.',
+      htmlBody: htmlBody,
+      inlineImages: { reportImage: imageBlob },
+      attachments: [pdfBlob],
+      name: 'My Machine'
+    });
+    batches++;
+  }
 
   return jsonResponse({
     status:'success',
     sentCount:rs.length,
+    batchCount:batches,
     richMail:true,
     pdfAttached:true,
     inlineImage:true
