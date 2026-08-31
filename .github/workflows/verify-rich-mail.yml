@@ -5,9 +5,12 @@ on:
     paths:
       - "admin_mail_rich.js"
       - "admin_final_patch.js"
+      - "admin_team_rate_patch.js"
       - "admin_na_patch.js"
       - "admin_ui_patch.js"
       - "admin_improvement_patch.js"
+      - "admin_improvement_layout_fix.js"
+      - "admin_report_mode_patch.js"
       - "admin.html"
       - "index.html"
       - "index_loader.js"
@@ -27,9 +30,12 @@ jobs:
         run: |
           node --check admin_mail_rich.js
           node --check admin_final_patch.js
+          node --check admin_team_rate_patch.js
           node --check admin_na_patch.js
           node --check admin_ui_patch.js
           node --check admin_improvement_patch.js
+          node --check admin_improvement_layout_fix.js
+          node --check admin_report_mode_patch.js
           node --check index_loader.js
           node --check index_app.js
           node --check index_na_patch.js
@@ -44,10 +50,21 @@ jobs:
       - name: Verify final integration markers
         run: |
           grep -q "admin_final_patch.js" admin.html
+          grep -q "admin_team_rate_patch.js" admin.html
           grep -q "admin_na_patch.js" admin.html
           grep -q "admin_ui_patch.js" admin.html
           grep -q "admin_improvement_patch.js" admin.html
+          grep -q "admin_improvement_layout_fix.js" admin.html
+          grep -q "admin_report_mode_patch.js" admin.html
           grep -q "admin_mail_rich.js" admin.html
+          grep -q "일 보고" admin_report_mode_patch.js
+          grep -q "월간 보고" admin_report_mode_patch.js
+          grep -q "mondaysInMonth" admin_report_mode_patch.js
+          grep -q "weeklyCompleted" admin_report_mode_patch.js
+          grep -q "주차누락" admin_report_mode_patch.js
+          grep -q "reportMode==='month'" admin_report_mode_patch.js
+          grep -q "dayRenderDetails" admin_report_mode_patch.js
+          grep -q "참여율" admin_team_rate_patch.js
           grep -q "index_na_patch.js" index_loader.js
           grep -q "value=\"N/A\"" index_na_patch.js
           grep -q "n===7" index_na_patch.js
