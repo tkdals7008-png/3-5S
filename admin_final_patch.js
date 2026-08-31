@@ -18,52 +18,6 @@
     }
   }
 
-  function numCell(td){
-    const n=parseInt(String(td&&td.textContent||'').replace(/[^0-9-]/g,''),10);
-    return Number.isFinite(n)?n:0;
-  }
-
-  function addTeamTotalRow(){
-    const body=document.getElementById('teamBody');
-    if(!body) return;
-    const existing=body.querySelector('.team-total-row');
-    if(existing) existing.remove();
-    const rows=[...body.querySelectorAll('tr')].filter(tr=>tr.children.length>=10&&!tr.classList.contains('team-total-row'));
-    if(!rows.length) return;
-    let machines=0,owners=0,done=0,missing=0,participants=0,nonParticipants=0,requests=0;
-    rows.forEach(tr=>{
-      const c=tr.children;
-      machines+=numCell(c[1]);
-      owners+=numCell(c[2]);
-      done+=numCell(c[3]);
-      missing+=numCell(c[4]);
-      participants+=numCell(c[5]);
-      nonParticipants+=numCell(c[6]);
-      requests+=numCell(c[8]);
-    });
-    const participationRate=owners?Math.min(100,participants/owners*100).toFixed(1)+'%':'-';
-    const actionRate=requests===0?'100%':'-';
-    const tr=document.createElement('tr');
-    tr.className='team-total-row';
-    tr.style.cssText='font-weight:900;background:#eaf2fb;border-top:3px solid #123a66';
-    tr.innerHTML=`<td>합계</td><td>${machines}</td><td>${owners}</td><td>${done}</td><td>${missing}</td><td><b>${participants}명</b></td><td><b>${nonParticipants}명</b></td><td><b>${participationRate}</b></td><td>${requests}</td><td>${actionRate}</td>`;
-    body.appendChild(tr);
-  }
-
-  function installTeamObserver(){
-    const body=document.getElementById('teamBody');
-    if(!body||body.dataset.totalObserver==='1') return;
-    body.dataset.totalObserver='1';
-    let busy=false;
-    const obs=new MutationObserver(()=>{
-      if(busy) return;
-      busy=true;
-      setTimeout(()=>{addTeamTotalRow();busy=false;},0);
-    });
-    obs.observe(body,{childList:true});
-    addTeamTotalRow();
-  }
-
   function loadScript(src,test){
     return new Promise((resolve,reject)=>{
       if(test()) return resolve();
@@ -88,8 +42,6 @@
 
   function run(){
     reorderReportSections();
-    installTeamObserver();
-    setTimeout(addTeamTotalRow,50);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run); else run();
 
@@ -98,8 +50,6 @@
     window.compute=function(){
       const result=oldCompute.apply(this,arguments);
       reorderReportSections();
-      installTeamObserver();
-      setTimeout(addTeamTotalRow,0);
       return result;
     };
   }
