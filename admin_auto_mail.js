@@ -57,13 +57,59 @@
   }
 
   const oldDownload=window.downloadMailTemplate;
-  window.downloadMailTemplate=function(){if(typeof collectSettings==='function')collectSettings();downloadCsv('MyMachine_메일설정.csv',['사용','이름','메일주소','소속팀','구분'],settings.mails.map(m=>[m.active!==false?'Y':'N',m.name,m.email,m.team||'',m.role||'팀원']));};
+  window.downloadMailTemplate=function(){
+    if(typeof collectSettings==='function')collectSettings();
+    if(typeof XLSX==='undefined'){
+      if(typeof oldDownload==='function') return oldDownload();
+      return alert('Excel 모듈을 불러오지 못했습니다. 인터넷 연결 후 새로고침 해주세요.');
+    }
+    const rows=[['사용','이름','메일주소','소속팀','구분']];
+    (settings.mails||[]).forEach(m=>rows.push([m.active!==false?'Y':'N',m.name||'',m.email||'',m.team||'',m.role||'팀원']));
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:8},{wch:18},{wch:36},{wch:20},{wch:12}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'메일설정');
+    XLSX.writeFile(wb,'MyMachine_메일설정.xlsx',{bookType:'xlsx',compression:true});
+  };
+
+  function parseMailRows_(rows){
+    const body=(rows||[]).slice(1).filter(x=>Array.isArray(x)&&x.some(v=>String(v==null?'':v).trim()!==''));
+    const mails=body.map(x=>({
+      active:String(x[0]||'Y').trim().toUpperCase()!=='N',
+      name:String(x[1]||'').trim(),
+      email:String(x[2]||'').trim(),
+      team:String(x[3]||'').trim(),
+      role:String(x[4]||'팀원').trim()||'팀원'
+    })).filter(x=>x.email);
+    if(!mails.length)throw new Error('등록 가능한 메일주소가 없습니다. C열 메일주소를 확인하세요.');
+    return mails;
+  }
 
   window.uploadMailTemplate=function(input){
-    const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();
-    r.onload=()=>{try{const txt=decodeUploadBuffer(r.result),rows=parseDelimited(txt);settings.mails=rows.slice(1).map(x=>({active:String(x[0]||'Y').trim().toUpperCase()!=='N',name:String(x[1]||'').trim(),email:String(x[2]||'').trim(),team:String(x[3]||'').trim(),role:String(x[4]||'팀원').trim()||'팀원'})).filter(x=>x.email);localStorage.setItem('mymachine_v3_settings',JSON.stringify(settings));renderSettings();alert('메일 설정 '+settings.mails.length+'명이 업로드되었습니다. 저장 버튼을 눌러 서버에 반영해 주세요.');input.value='';}catch(e){alert('메일 설정 업로드 오류: '+e.message);input.value='';}};
+    const f=input.files&&input.files[0];if(!f)return;
+    const ext=(f.name.split('.').pop()||'').toLowerCase();
+    const r=new FileReader();
+    r.onload=()=>{try{
+      let rows;
+      if(ext==='xlsx'||ext==='xls'){
+        if(typeof XLSX==='undefined')throw new Error('Excel 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+        const wb=XLSX.read(r.result,{type:'array',cellDates:false});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+      }else{
+        const txt=decodeUploadBuffer(r.result);
+        rows=parseDelimited(txt);
+      }
+      settings.mails=parseMailRows_(rows);
+      localStorage.setItem('mymachine_v3_settings',JSON.stringify(settings));
+      renderSettings();
+      alert('메일 설정 '+settings.mails.length+'명이 업로드되었습니다. 저장 버튼을 눌러 서버에 반영해 주세요.');
+      input.value='';
+    }catch(e){alert('메일 설정 업로드 오류: '+e.message);input.value='';}};
     r.readAsArrayBuffer(f);
   };
+
+  setTimeout(()=>document.querySelectorAll('#mailSection input[type=file]').forEach(el=>el.setAttribute('accept','.xlsx,.xls,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain')),350);
 
   setTimeout(()=>{ensureMailDefaults();if(document.getElementById('mailSettings'))window.renderSettings();},300);
 })();
