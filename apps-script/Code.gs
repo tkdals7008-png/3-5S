@@ -40,6 +40,14 @@ function doPost(e) {
       return sendRichReportEmail_(d);
     }
 
+    if (d.action === "setup_auto_mail") {
+      return jsonResponse(setupAutoMailTrigger_());
+    }
+
+    if (d.action === "run_auto_mail_check") {
+      return jsonResponse(runMondayAutoMailCheck_(true));
+    }
+
     var s = getDataSheet_();
 
     if (d.action === "delete_record") {
@@ -93,7 +101,9 @@ function doPost(e) {
       d.item6 || "", d.item7 || "", d.item8 || "", d.item9 || "", d.item10 || "",
       d.issueRemarks || "", urls.join(", "), imm, req, done, detail, reqNo, "", "", snap, actionJson
     ]);
-    return jsonResponse({status:"success", requestNo:reqNo});
+    var autoMail = null;
+    try { autoMail = onInspectionSaved_(d.inspectDate || ""); } catch (autoErr) { console.error("자동메일 확인 오류", autoErr); }
+    return jsonResponse({status:"success", requestNo:reqNo, autoMail:autoMail});
 
   } catch (err) {
     return jsonResponse({status:"error", message:err.toString()});
@@ -201,9 +211,16 @@ function getAdminSettings_() {
   }
 
   if (es && es.getLastRow() >= 2) {
-    var ev = es.getRange(2,1,es.getLastRow()-1,3).getValues();
+    var width = Math.max(5, es.getLastColumn());
+    var ev = es.getRange(2,1,es.getLastRow()-1,width).getValues();
     mails = ev.filter(function(r){ return String(r[2]||"").trim(); }).map(function(r){
-      return {active:String(r[0]||"Y").toUpperCase()!=="N", name:String(r[1]||"").trim(), email:String(r[2]||"").trim()};
+      return {
+        active:String(r[0]||"Y").toUpperCase()!=="N",
+        name:String(r[1]||"").trim(),
+        email:String(r[2]||"").trim(),
+        team:String(r[3]||"").trim(),
+        role:String(r[4]||"팀원").trim()||"팀원"
+      };
     });
   }
 
@@ -229,12 +246,14 @@ function saveAdminSettings_(machines, mails) {
 
     var es = ss.getSheetByName(MAIL_CONFIG_SHEET) || ss.insertSheet(MAIL_CONFIG_SHEET);
     es.clearContents();
-    es.getRange(1,1,1,3).setValues([["사용","이름","메일"]]);
+    es.getRange(1,1,1,5).setValues([["사용","이름","메일","소속팀","구분"]]);
     if (mails.length) {
       var erows = mails.filter(function(x){ return x && String(x.email||"").trim(); }).map(function(x){
-        return [x.active===false?"N":"Y", String(x.name||"").trim(), String(x.email||"").trim()];
+        var role=String(x.role||"팀원").trim();
+        if (["팀원","팀장","임원"].indexOf(role)<0) role="팀원";
+        return [x.active===false?"N":"Y", String(x.name||"").trim(), String(x.email||"").trim(), String(x.team||"").trim(), role];
       });
-      if (erows.length) es.getRange(2,1,erows.length,3).setValues(erows);
+      if (erows.length) es.getRange(2,1,erows.length,5).setValues(erows);
     }
     es.setFrozenRows(1);
   } finally { lock.releaseLock(); }
