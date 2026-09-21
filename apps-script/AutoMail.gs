@@ -6,7 +6,7 @@ function setupAutoMailTrigger_() {
   });
   ScriptApp.newTrigger(AUTO_MAIL_HANDLER)
     .timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(9).nearMinute(0).create();
-  return {status:'success', message:'월요일 09시 자동 확인이 설정되었습니다.'};
+  return {status:'success', message:'월요일 09시대 자동 확인이 설정되었습니다.'};
 }
 
 function scheduledMondayAutoMail_() {
@@ -64,12 +64,18 @@ function sendMissingAlert_(st) {
     if(role==='임원' || (role==='팀장' && missingTeams[String(m.team||'').trim()])) recipients.push(m.email);
   });
   recipients=uniqueEmails_(recipients);
-  if(!recipients.length) throw Error('미등록 알림 수신자가 없습니다. 메일 설정의 이름/소속팀/구분을 확인해 주세요.');
-  var rows=st.missing.map(function(x){
-    return '<tr><td style="padding:9px;border-bottom:1px solid #f2c7c7">'+escAuto_(x.team||'-')+'</td><td style="padding:9px;border-bottom:1px solid #f2c7c7;font-weight:700">'+escAuto_(x.name)+'</td><td style="padding:9px;border-bottom:1px solid #f2c7c7">'+escAuto_(x.machine||'-')+'</td><td style="padding:9px;border-bottom:1px solid #f2c7c7;color:#c62828;font-weight:800">미등록</td></tr>';
+  if(!recipients.length) throw Error('09시 현황 메일 수신자가 없습니다. 메일 설정의 이름/소속팀/구분을 확인해 주세요.');
+
+  var rows=st.targets.map(function(x){
+    var done=!!x.registered;
+    var bg=done?'#f7fbf7':'#fff7f7';
+    var color=done?'#2e7d32':'#c62828';
+    var label=done?'등록완료':'미등록';
+    return '<tr style="background:'+bg+'"><td style="padding:9px;border-bottom:1px solid #e6e6e6">'+escAuto_(x.team||'-')+'</td><td style="padding:9px;border-bottom:1px solid #e6e6e6;font-weight:700">'+escAuto_(x.name)+'</td><td style="padding:9px;border-bottom:1px solid #e6e6e6">'+escAuto_(x.machine||'-')+'</td><td style="padding:9px;border-bottom:1px solid #e6e6e6;color:'+color+';font-weight:800">'+label+'</td></tr>';
   }).join('');
-  var html='<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#172033"><div style="max-width:760px;margin:auto"><div style="background:#b71c1c;color:white;padding:18px;border-radius:12px"><div style="font-size:23px;font-weight:800">⚠ 09시 현재 미등록 '+st.missing.length+'명</div><div style="margin-top:6px">전체 '+st.total+'명 / 완료 '+st.done+'명 / 미등록 '+st.missing.length+'명</div></div><p style="font-size:14px;line-height:1.7">아래 미등록자는 My Machine 3정5S 점검 결과를 등록해 주세요. 해당 팀장과 임원에게 함께 안내됩니다.</p><table style="width:100%;border-collapse:collapse;background:#fff7f7"><thead><tr><th style="padding:9px;text-align:left">팀</th><th style="padding:9px;text-align:left">점검자</th><th style="padding:9px;text-align:left">설비</th><th style="padding:9px;text-align:left">상태</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-  sendAutoMailBatched_(recipients,'[My Machine] ⚠ 09시 점검현황 - 미등록 '+st.missing.length+'명 / 완료 '+st.done+'명',html,'09시 현재 미등록 '+st.missing.length+'명입니다.');
+
+  var html='<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#172033"><div style="max-width:760px;margin:auto"><div style="background:#123a66;color:white;padding:18px;border-radius:12px"><div style="font-size:23px;font-weight:800">09시 My Machine 점검 현황</div><div style="margin-top:6px">전체 '+st.total+'명 / 완료 '+st.done+'명 / 미등록 '+st.missing.length+'명</div></div><p style="font-size:14px;line-height:1.7">09시 현재 전체 점검 대상자의 등록 현황입니다. 미등록자는 My Machine 3정5S 점검 결과를 등록해 주세요.</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:9px;text-align:left">팀</th><th style="padding:9px;text-align:left">점검자</th><th style="padding:9px;text-align:left">설비</th><th style="padding:9px;text-align:left">상태</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  sendAutoMailBatched_(recipients,'[My Machine] 09시 점검현황 - 완료 '+st.done+'명 / 미등록 '+st.missing.length+'명',html,'09시 현재 전체 '+st.total+'명 중 완료 '+st.done+'명, 미등록 '+st.missing.length+'명입니다.');
   return recipients.length;
 }
 
@@ -114,14 +120,22 @@ function runMondayAutoMailCheck_(manual) {
 }
 
 function onInspectionSaved_(inspectDate) {
-  var tz=Session.getScriptTimeZone()||'Asia/Seoul', today=Utilities.formatDate(new Date(),tz,'yyyy-MM-dd');
-  var week=autoMailWeekKey_(new Date());
+  var tz=Session.getScriptTimeZone()||'Asia/Seoul', now=new Date();
+  var week=autoMailWeekKey_(now);
   if(String(inspectDate||'').slice(0,10)!==week) return {status:'skip',reason:'not_this_monday'};
+
+  // 09시 이전에는 등록 완료 여부와 관계없이 최종 메일을 보내지 않는다.
+  // 09시 시점에 이미 100%이면 정기 트리거가 최종 메일 1회만 발송한다.
+  var hour=Number(Utilities.formatDate(now,tz,'H'));
+  if(hour<9) return {status:'skip',reason:'before_0900'};
+
   var props=PropertiesService.getScriptProperties();
   if(props.getProperty('MM_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent'};
+
   var st=getAutoMailStatus_(week);
   if(st.total && st.missing.length===0){
-    var n=sendFinalAutoReport_(st); props.setProperty('MM_FINAL_'+week,'Y');
+    var n=sendFinalAutoReport_(st);
+    props.setProperty('MM_FINAL_'+week,'Y');
     return {status:'success',type:'final',sentCount:n,total:st.total};
   }
   return {status:'skip',reason:'not_complete',missing:st.missing.length};
