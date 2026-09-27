@@ -34,10 +34,12 @@
   function localStatuses(){try{return JSON.parse(localStorage.getItem(statusKey)||'{}')||{};}catch(e){return {};}}
   function saveLocalStatus(id,st){const s=localStatuses();s[id]=st;localStorage.setItem(statusKey,JSON.stringify(s));}
   function requestById(id){return (window.requests||requests||[]).find(q=>q.id===id);}
-  function photoUrl(p){return p&&(p.preview||p.url||(p.base64?'data:image/jpeg;base64,'+p.base64:''))||'';}
-  function beforeUrl(q){return photoUrl(q&&q.action&&q.action.photos&&q.action.photos.reqBefore);}
+  function photoUrl(p){return p&&(typeof p==='string'?p:p.preview||p.url||(p.base64?'data:image/jpeg;base64,'+p.base64:''))||'';}
+  function photoUrls(p){return (Array.isArray(p)?p:[p]).map(photoUrl).filter(Boolean);}
+  function beforeUrls(q){return photoUrls(q&&q.action&&q.action.photos&&q.action.photos.reqBefore);}
+  function beforeUrl(q){return beforeUrls(q)[0]||'';}
   function afterUrl(q){return (q&&q.adminMeta&&q.adminMeta.photoUrl)||photoUrl(q&&q.action&&q.action.photos&&q.action.photos.reqAfter);}
-  function imgHtml(url,label){if(!url)return '<span class="hint">-</span>';return `<span class="compare-label">${label}</span><div class="photos">${photoTag(url)}</div>`;}
+  function imgHtml(url,label){const urls=Array.isArray(url)?url:[url];if(!urls.filter(Boolean).length)return '<span class="hint">-</span>';return `<span class="compare-label">${label}</span><div class="photos">${urls.filter(Boolean).map(photoTag).join('')}</div>`;}
 
   function parseAdminStore(row){
     const raw=String(row&&row.actionText||'').trim();
@@ -84,7 +86,7 @@
     ensureRequestHeader();ensureAllHeadersCentered();const body=document.getElementById('requestBody');if(!body)return;
     body.innerHTML=requests.map(q=>{
       const st=statusFor(q),stCls=st==='완료'?'b-green':st==='진행중'?'b-blue':'b-orange',done=st==='완료';
-      return `<tr><td>${requestIdHtml(q)}</td><td>${q.row.date}</td><td>${q.row.machine}</td><td>${q.item}. ${itemNameFor(q)}</td><td>${q.row.inspector||'-'}</td><td>${q.priority}</td><td>${q.text||'-'}</td><td>${imgHtml(beforeUrl(q),'개선전')}</td><td>${imgHtml(afterUrl(q),'개선후')}</td><td><span class="badge ${stCls}">${st}</span></td><td class="noPrint"><button class="btn" onclick="setRequestProgress('${q.id}')">진행</button><button class="btn green" onclick="openRequestComplete('${q.id}')">${done?'완료사진 변경':'완료'}</button></td></tr>`;
+      return `<tr><td>${requestIdHtml(q)}</td><td>${q.row.date}</td><td>${q.row.machine}</td><td>${q.item}. ${itemNameFor(q)}</td><td>${q.row.inspector||'-'}</td><td>${q.priority}</td><td>${q.text||'-'}</td><td>${imgHtml(beforeUrls(q),'개선전')}</td><td>${imgHtml(afterUrl(q),'개선후')}</td><td><span class="badge ${stCls}">${st}</span></td><td class="noPrint"><button class="btn" onclick="setRequestProgress('${q.id}')">진행</button><button class="btn green" onclick="openRequestComplete('${q.id}')">${done?'완료사진 변경':'완료'}</button></td></tr>`;
     }).join('')||'<tr><td colspan="11">개선요청 없음</td></tr>';
   };
 
@@ -114,7 +116,7 @@
   window.openRequestComplete=function(id){
     const q=requestById(id);if(!q)return alert('개선요청 정보를 찾을 수 없습니다.');ensureModal();activeRequestId=id;
     document.getElementById('reqCompleteInfo').textContent=`${q.row.date} / ${q.row.machine} / ${q.item}. ${itemNameFor(q)}`;
-    const b=beforeUrl(q);document.getElementById('reqBeforePreview').innerHTML=b?`<img src="${b}" alt="개선전 사진">`:'<p class="hint">개선전 사진 없음</p>';
+    const bs=beforeUrls(q);document.getElementById('reqBeforePreview').innerHTML=bs.length?bs.map(b=>`<img src="${b}" alt="개선전 사진">`).join(''):'<p class="hint">개선전 사진 없음</p>';
     const a=afterUrl(q);document.getElementById('reqAfterPreview').innerHTML=a?`<img src="${a}" alt="현재 개선후 사진"><p class="hint">새 사진을 선택하면 교체됩니다.</p>`:'';
     document.getElementById('reqAfterFile').value='';document.getElementById('reqCompleteModal').style.display='flex';
   };
