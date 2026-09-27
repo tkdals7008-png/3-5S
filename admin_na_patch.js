@@ -28,7 +28,7 @@
   }
   function hasMappedPhotos(a){
     return !!(a&&a.photos&&typeof a.photos==='object'&&Object.keys(a.photos).some(k=>{
-      const p=a.photos[k];return !!(p&&((typeof p==='string'&&p)||p.url||p.preview||p.base64));
+      const p=a.photos[k];return (Array.isArray(p)?p:[p]).some(v=>!!(v&&((typeof v==='string'&&v)||v.url||v.preview||v.base64)));
     }));
   }
   function hydrateLegacyPhotos(r){
