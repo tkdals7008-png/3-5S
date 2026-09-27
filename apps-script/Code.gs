@@ -275,16 +275,18 @@ function saveItemActionPhotos_(d) {
     var src = a.photos && typeof a.photos === "object" ? a.photos : {};
     var saved = {};
     ["immBefore","immAfter","reqBefore","reqAfter"].forEach(function(k){
-      var p = src[k];
-      if (p && p.base64) {
-        var name = (d.inspectDate || "date") + "_" + (d.machineId || "machine") + "_item" + (a.item || ai+1) + "_" + k + "_" + Date.now();
-        var u = savePhoto_(p, name);
-        saved[k] = {url:u};
-        urls.push(u);
-      } else if (p && p.url) {
-        saved[k] = {url:String(p.url)};
-        urls.push(String(p.url));
-      }
+      var p = src[k], many = Array.isArray(p);
+      var list = many ? p : (p ? [p] : []), stored = [];
+      list.forEach(function(photo, pi){
+        if (photo && photo.base64) {
+          var name = (d.inspectDate || "date") + "_" + (d.machineId || "machine") + "_item" + (a.item || ai+1) + "_" + k + "_" + Date.now() + "_" + (pi+1);
+          var u = savePhoto_(photo, name);
+          stored.push({url:u}); urls.push(u);
+        } else if (photo && photo.url) {
+          stored.push({url:String(photo.url)}); urls.push(String(photo.url));
+        }
+      });
+      if (stored.length) saved[k] = many ? stored : stored[0];
     });
     a.photos = saved;
   });
