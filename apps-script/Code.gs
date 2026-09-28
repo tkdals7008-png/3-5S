@@ -75,6 +75,17 @@ function doPost(e) {
       return jsonResponse({status:"success"});
     }
 
+    if (!d.inspectDate || !d.machineId) return jsonResponse({status:"error", message:"점검 일자와 설비가 필요합니다."});
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+    var existing = findInspectionRows_(s, d.inspectDate, d.machineId);
+    if (existing.length && d.replaceExisting !== true) {
+      return jsonResponse({status:"confirm_replace", existingCount:existing.length});
+    }
+    if (d.replaceExisting === true && Number(d.expectedExistingCount) !== existing.length) {
+      return jsonResponse({status:"confirm_replace", existingCount:existing.length});
+    }
     var mapped = saveItemActionPhotos_(d);
     var urls = mapped.urls;
     var mappedActions = mapped.actions;
@@ -101,9 +112,11 @@ function doPost(e) {
       d.item6 || "", d.item7 || "", d.item8 || "", d.item9 || "", d.item10 || "",
       d.issueRemarks || "", urls.join(", "), imm, req, done, detail, reqNo, "", "", snap, actionJson
     ]);
+    existing.sort(function(a,b){return b-a;}).forEach(function(row){s.deleteRow(row);});
+    } finally { lock.releaseLock(); }
     var autoMail = null;
     try { autoMail = onInspectionSaved_(d.inspectDate || ""); } catch (autoErr) { console.error("자동메일 확인 오류", autoErr); }
-    return jsonResponse({status:"success", requestNo:reqNo, autoMail:autoMail});
+    return jsonResponse({status:"success", requestNo:reqNo, replacedCount:existing.length, autoMail:autoMail});
 
   } catch (err) {
     return jsonResponse({status:"error", message:err.toString()});
@@ -116,6 +129,11 @@ function doGet(e) {
     if (a === "get_items") return jsonResponse({status:"success", items:getItemSettings_()});
     if (a === "get_admin_settings") return jsonResponse({status:"success", settings:getAdminSettings_()});
     if (a === "health") return jsonResponse({status:"success", api:"MyMachine", version:"V3"});
+    if (a === "check_inspection") {
+      var p = e.parameter || {};
+      if (!p.date || !p.machine) return jsonResponse({status:"error", message:"일자와 설비가 필요합니다."});
+      return jsonResponse({status:"success", existingCount:findInspectionRows_(getDataSheet_(), p.date, p.machine).length});
+    }
 
     var s = getDataSheet_();
     var v = s.getDataRange().getValues();
@@ -147,6 +165,17 @@ function doGet(e) {
   } catch (err) {
     return jsonResponse({status:"error", message:err.toString()});
   }
+}
+
+function findInspectionRows_(s, date, machine) {
+  var last = s.getLastRow();
+  if (last < 2) return [];
+  var values = s.getRange(2, 1, last-1, 3).getValues(), rows = [];
+  values.forEach(function(r, i){
+    var day = r[0] instanceof Date ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), "yyyy-MM-dd") : String(r[0] || "").trim();
+    if (day === String(date) && String(r[2] || "").trim() === String(machine).trim()) rows.push(i+2);
+  });
+  return rows;
 }
 
 function getDataSheet_() {
