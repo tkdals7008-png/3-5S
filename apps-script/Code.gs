@@ -279,7 +279,7 @@ function saveAdminSettings_(machines, mails) {
     if (mails.length) {
       var erows = mails.filter(function(x){ return x && String(x.email||"").trim(); }).map(function(x){
         var role=String(x.role||"팀원").trim();
-        if (["팀원","팀장","임원"].indexOf(role)<0) role="팀원";
+        if (["팀원","팀장","임원","관리자"].indexOf(role)<0) role="팀원";
         return [x.active===false?"N":"Y", String(x.name||"").trim(), String(x.email||"").trim(), String(x.team||"").trim(), role];
       });
       if (erows.length) es.getRange(2,1,erows.length,5).setValues(erows);
