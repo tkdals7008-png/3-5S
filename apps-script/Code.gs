@@ -36,6 +36,9 @@ function doPost(e) {
       return jsonResponse({status:"success", settings:getAdminSettings_(), items:getItemSettings_()});
     }
 
+    if (d.action === "pc_report_status") return jsonResponse(pcReportStatus_(d));
+    if (d.action === "pc_report_send") return jsonResponse(pcReportSend_(d));
+
     if (d.action === "send_report_email") {
       return sendRichReportEmail_(d);
     }
