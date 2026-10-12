@@ -94,12 +94,7 @@ function sendMissingAlert_(st, reminderNo) {
 function sendFinalAutoReport_(st) {
   var recipients=uniqueEmails_(st.mails.map(function(m){return m.email;}));
   if(!recipients.length) throw Error('사용 체크된 전체 메일 수신자가 없습니다.');
-  var payload=renderAutomaticReport_(st);
-  payload.recipients=recipients;
-  if(MailApp.getRemainingDailyQuota()<recipients.length)throw Error('메일 일일 잔여 한도 부족');
-  var result=deliverRichReportEmail_(payload);
-  if(result.status!=='success'||!result.pdfAttached||!result.inlineImage||result.sentCount!==recipients.length)throw Error('완료 보고서 발송 실패');
-  return result.sentCount;
+  throw Error('PC 자동 보고서에서 전체 보고서 발송을 처리합니다.');
 }
 
 function sendAutoMailBatched_(recipients,subject,html,body){
@@ -118,8 +113,7 @@ function runMondayAutoMailCheck_(manual) {
     var st=getAutoMailStatus_(week);
     if(!st.total) return {status:'error',message:'활성 설비의 담당자가 없어 자동메일 대상을 계산할 수 없습니다.'};
     if(st.missing.length===0){
-      var n=sendFinalAutoReport_(st); props.setProperty('MM_REPORT_FINAL_'+week,'Y'); props.setProperty('MM_0900_'+week,'Y');
-      return {status:'success',type:'final',sentCount:n,total:st.total,missing:0};
+      return {status:'pending_report',total:st.total,missing:0,message:'전원 등록완료: PC 전체 보고서 발송 대기'};
     }
     if(Number(Utilities.formatDate(now,tz,'H'))<9) return {status:'skip',reason:'before_0900',missing:st.missing.length};
     var firstSent=props.getProperty('MM_0900_'+week)==='Y';
@@ -148,9 +142,7 @@ function onInspectionSaved_(inspectDate) {
 
   var st=getAutoMailStatus_(week);
   if(st.total && st.missing.length===0){
-    var n=sendFinalAutoReport_(st);
-    props.setProperty('MM_REPORT_FINAL_'+week,'Y');
-    return {status:'success',type:'final',sentCount:n,total:st.total};
+    return {status:'pending_report',total:st.total,missing:0};
   }
   return {status:'skip',reason:'not_complete',missing:st.missing.length};
   } finally { lock.releaseLock(); }
