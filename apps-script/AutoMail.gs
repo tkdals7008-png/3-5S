@@ -94,18 +94,7 @@ function sendMissingAlert_(st, reminderNo) {
 function sendFinalAutoReport_(st) {
   var recipients=uniqueEmails_(st.mails.map(function(m){return m.email;}));
   if(!recipients.length) throw Error('사용 체크된 전체 메일 수신자가 없습니다.');
-  var sheet=getDataSheet_(), vals=sheet.getDataRange().getValues(), byMachine={};
-  for(var i=1;i<vals.length;i++){
-    var ds=vals[i][0]; if(ds instanceof Date) ds=Utilities.formatDate(ds,Session.getScriptTimeZone(),'yyyy-MM-dd'); else ds=String(ds||'').slice(0,10);
-    if(ds!==st.weekKey) continue;
-    var ok=0,ng=0,na=0;
-    for(var j=3;j<=12;j++){if(vals[i][j]==='O')ok++;else if(vals[i][j]==='X')ng++;else if(vals[i][j]==='N/A')na++;}
-    byMachine[normName_(vals[i][2])]={name:vals[i][1],machine:vals[i][2],ok:ok,ng:ng,na:na,issue:vals[i][13]||'',imm:Number(vals[i][15]||0),req:Number(vals[i][16]||0)};
-  }
-  var rows=st.targets.map(function(t){return t.machines.map(function(machine){var r=byMachine[normName_(machine)]||{};return '<tr><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(t.team||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(t.name)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.name||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.machine||machine||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+Number(r.ok||0)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+Number(r.ng||0)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.issue||'-')+'</td></tr>';}).join('');}).join('');
-  var html='<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#172033"><div style="max-width:900px;margin:auto"><div style="background:#123a66;color:#fff;padding:18px;border-radius:12px"><div style="font-size:23px;font-weight:800">My Machine 3정5S 전체 등록완료</div><div style="margin-top:6px">'+escAuto_(st.weekKey)+' / 전체 '+st.total+'명 담당 설비 등록완료</div></div><p style="line-height:1.7">이번 주 점검 대상자가 모두 등록을 완료하여 최종 결과를 자동 발송합니다.</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:8px;text-align:left">팀</th><th style="padding:8px;text-align:left">담당자</th><th style="padding:8px;text-align:left">실제 점검자</th><th style="padding:8px;text-align:left">설비</th><th style="padding:8px">양호</th><th style="padding:8px">미흡</th><th style="padding:8px;text-align:left">비고</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-  sendAutoMailBatched_(recipients,'[My Machine] '+st.weekKey+' 3정5S 전체 등록완료',html,'My Machine 3정5S 전체 등록완료 결과입니다.');
-  return recipients.length;
+  throw Error('PC 자동 보고서에서 전체 보고서 발송을 처리합니다.');
 }
 
 function sendAutoMailBatched_(recipients,subject,html,body){
@@ -117,17 +106,16 @@ function sendAutoMailBatched_(recipients,subject,html,body){
 function runMondayAutoMailCheck_(manual) {
   var now=new Date(), tz=Session.getScriptTimeZone()||'Asia/Seoul', dow=Utilities.formatDate(now,tz,'u');
   if(dow!=='1') return {status:'skip',reason:'not_monday'};
-  if(Number(Utilities.formatDate(now,tz,'H'))<9) return {status:'skip',reason:'before_0900'};
   var lock=LockService.getScriptLock(); lock.waitLock(30000);
   try {
     var week=autoMailWeekKey_(now), props=PropertiesService.getScriptProperties();
-    if(props.getProperty('MM_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent'};
+    if(props.getProperty('MM_REPORT_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent'};
     var st=getAutoMailStatus_(week);
     if(!st.total) return {status:'error',message:'활성 설비의 담당자가 없어 자동메일 대상을 계산할 수 없습니다.'};
     if(st.missing.length===0){
-      var n=sendFinalAutoReport_(st); props.setProperty('MM_FINAL_'+week,'Y'); props.setProperty('MM_0900_'+week,'Y');
-      return {status:'success',type:'final',sentCount:n,total:st.total,missing:0};
+      return {status:'pending_report',total:st.total,missing:0,message:'전원 등록완료: PC 전체 보고서 발송 대기'};
     }
+    if(Number(Utilities.formatDate(now,tz,'H'))<9) return {status:'skip',reason:'before_0900',missing:st.missing.length};
     var firstSent=props.getProperty('MM_0900_'+week)==='Y';
     var last=Number(props.getProperty('MM_LAST_ALERT_'+week)||0);
     // 구버전이 보낸 1차 알림도 중복 발송하지 않고 다음 차수로 이어간다.
@@ -147,21 +135,14 @@ function onInspectionSaved_(inspectDate) {
   var week=autoMailWeekKey_(now);
   if(String(inspectDate||'').slice(0,10)!==week) return {status:'skip',reason:'not_this_monday'};
 
-  // 09시 이전에는 등록 완료 여부와 관계없이 최종 메일을 보내지 않는다.
-  // 09시 시점에 이미 100%이면 정기 트리거가 최종 메일 1회만 발송한다.
-  var hour=Number(Utilities.formatDate(now,tz,'H'));
-  if(hour<9) return {status:'skip',reason:'before_0900'};
-
   var lock=LockService.getScriptLock(); lock.waitLock(30000);
   try {
   var props=PropertiesService.getScriptProperties();
-  if(props.getProperty('MM_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent'};
+  if(props.getProperty('MM_REPORT_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent'};
 
   var st=getAutoMailStatus_(week);
   if(st.total && st.missing.length===0){
-    var n=sendFinalAutoReport_(st);
-    props.setProperty('MM_FINAL_'+week,'Y');
-    return {status:'success',type:'final',sentCount:n,total:st.total};
+    return {status:'pending_report',total:st.total,missing:0};
   }
   return {status:'skip',reason:'not_complete',missing:st.missing.length};
   } finally { lock.releaseLock(); }

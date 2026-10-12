@@ -1,4 +1,8 @@
 function sendRichReportEmail_(d) {
+  return jsonResponse(deliverRichReportEmail_(d));
+}
+
+function deliverRichReportEmail_(d) {
   var seen = {};
   var rs = (Array.isArray(d.recipients) ? d.recipients : [])
     .map(String)
@@ -12,15 +16,15 @@ function sendRichReportEmail_(d) {
     });
 
   if (!rs.length) {
-    return jsonResponse({status:'error', message:'메일 수신자가 없습니다.'});
+    return ({status:'error', message:'메일 수신자가 없습니다.'});
   }
 
   if (!d.reportImageBase64) {
-    return jsonResponse({status:'error', message:'메일 본문용 보고서 이미지가 없습니다.'});
+    return ({status:'error', message:'메일 본문용 보고서 이미지가 없습니다.'});
   }
 
   if (!d.reportPdfBase64) {
-    return jsonResponse({status:'error', message:'첨부용 PDF 데이터가 없습니다.'});
+    return ({status:'error', message:'첨부용 PDF 데이터가 없습니다.'});
   }
 
   var imageBytes = Utilities.base64Decode(String(d.reportImageBase64));
@@ -70,7 +74,7 @@ function sendRichReportEmail_(d) {
     batches++;
   }
 
-  return jsonResponse({
+  return ({
     status:'success',
     sentCount:rs.length,
     batchCount:batches,

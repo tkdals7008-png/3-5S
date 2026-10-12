@@ -101,12 +101,13 @@
     wrap.appendChild(rc);host.appendChild(wrap);document.body.appendChild(host);return host;
   }
 
-  async function captureReport(){
+  async function captureReport(strict){
     if(typeof window.ensureReportLibraries==='function')await window.ensureReportLibraries();
     if(!window.html2canvas)throw new Error('보고서 이미지 생성 라이브러리 로드에 실패했습니다. 인터넷 연결 후 다시 시도해 주세요.');
     const host=makeCaptureNode();
     try{
       await inlineCaptureImages(host);
+      if(strict && [...host.querySelectorAll("img")].some(img=>!img.complete||!img.naturalWidth))throw new Error("보고서 사진을 모두 불러오지 못했습니다.");
       await new Promise(r=>setTimeout(r,250));
       const canvas=await html2canvas(host,{backgroundColor:'#f3f6fb',scale:2,useCORS:true,allowTaint:false,imageTimeout:15000,logging:false,windowWidth:1232,windowHeight:Math.max(host.scrollHeight,800)});
       if(!canvas.width||!canvas.height)throw new Error('보고서 이미지 생성에 실패했습니다.');
@@ -132,6 +133,17 @@
 
   function safeName(s){return String(s||'').replace(/[^0-9A-Za-z가-힣._-]+/g,'_');}
 
+  // Shared renderer: no settings writes, recipients, or email side effects.
+  window.createMyMachineReportPayload=async function(period,strict){
+    const canvas=await captureReport(strict);
+    const imageBase64=resizedJpeg(canvas,1600,.90).split(',')[1];
+    const pdfBase64=await makePdfBase64(resizedJpeg(canvas,1800,.90),canvas);
+    const base=safeName('MyMachine_'+period+'_3정5S_점검결과');
+    const approxMB=(imageBase64.length+pdfBase64.length)*.75/1024/1024;
+    if(approxMB>18)throw new Error('보고서 파일 용량이 너무 큽니다 ('+approxMB.toFixed(1)+'MB).');
+    return {action:'send_report_email',subject:'[My Machine] '+period+' 3정5S 점검 결과',body:'My Machine 3정5S 점검 결과입니다. 메일 본문의 컬러 보고서 이미지와 첨부 PDF를 확인해 주세요.',reportImageBase64:imageBase64,reportImageMimeType:'image/jpeg',reportImageName:base+'.jpg',reportPdfBase64:pdfBase64,reportPdfName:base+'.pdf'};
+  };
+
   window.sendMail=async function(){
     if(typeof isAdminAuthed==='function'&&!isAdminAuthed())return openAdminLogin();
     const btn=[...document.querySelectorAll('button')].find(b=>b.textContent.includes('보고서 메일 발송')),old=btn?btn.textContent:'';
@@ -141,13 +153,8 @@
       const recipients=await getVerifiedRecipients();
       const period=(document.getElementById('monthPicker')&&document.getElementById('monthPicker').value)||(document.getElementById('monthInput')&&document.getElementById('monthInput').value)||new Date().toISOString().slice(0,7);
       if(!confirm(period+' My Machine 보고서를\n고유 수신자 '+recipients.length+'명에게 발송하시겠습니까?\n\n메일 본문: 컬러 보고서 이미지\n첨부파일: PDF 보고서'))return;
-      if(typeof window.ensureReportLibraries==='function')await window.ensureReportLibraries();
-      const canvas=await captureReport();
-      if(btn)btn.textContent='PDF 생성 중...';
-      const reportImageDataUrl=resizedJpeg(canvas,1600,.90),pdfJpegDataUrl=resizedJpeg(canvas,1800,.90),pdfBase64=await makePdfBase64(pdfJpegDataUrl,canvas),imageBase64=reportImageDataUrl.split(',')[1],base=safeName('MyMachine_'+period+'_3정5S_점검결과');
-      const payload={action:'send_report_email',recipients,subject:'[My Machine] '+period+' 3정5S 점검 결과',body:'My Machine 3정5S 점검 결과입니다. 메일 본문의 컬러 보고서 이미지와 첨부 PDF를 확인해 주세요.',reportImageBase64:imageBase64,reportImageMimeType:'image/jpeg',reportImageName:base+'.jpg',reportPdfBase64:pdfBase64,reportPdfName:base+'.pdf'};
-      const approxMB=(imageBase64.length+pdfBase64.length)*.75/1024/1024;
-      if(approxMB>18)throw new Error('보고서 파일 용량이 너무 큽니다 ('+approxMB.toFixed(1)+'MB). 사진 수를 줄인 뒤 다시 시도해 주세요.');
+      const payload=await window.createMyMachineReportPayload(period,false);
+      payload.recipients=recipients;
       if(btn)btn.textContent='메일 발송 중...';
       const res=await fetch(WEB_APP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}),result=await readJsonResponse(res,'메일 발송');
       if(result.status!=='success')throw new Error(result.message||'Apps Script 메일 발송 실패');
