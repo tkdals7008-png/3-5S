@@ -17,7 +17,7 @@
       const result=await post({action:'pc_report_status'});
       if(!enabled)return;
       if(result.status==='quota_wait'){
-        nextDelay=300000;note('메일 한도 회복 대기 · 잔여 '+result.remaining+'명 / 필요 '+result.required+'명 · 5분마다 한도 확인 · 보고서 날짜 '+result.date);return;
+        nextDelay=result.retryAfterMs||300000;note('메일 한도 회복 대기 · 잔여 '+result.remaining+'명 / 필요 '+result.required+'명 · 다음 확인 '+new Date(Date.now()+nextDelay).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+' · 보고서 날짜 '+result.date);return;
       }
       if(result.status!=='ready'){
         note(result.reason==='final_already_sent'?'전체 보고서 발송 완료 · 중복 발송하지 않습니다.':result.status==='waiting'?'등록 대기 · 미등록 '+result.missing+'명':'점검일 대기');return;
@@ -34,7 +34,7 @@
       if(!enabled)return;
       note('전체 보고서 발송 중...');
       const sent=await post({...payload,action:'pc_report_send',date:snapshot.date,revision:result.revision});
-      if(sent.status==='quota_wait'){nextDelay=300000;note('메일 한도 회복 대기 · 잔여 '+sent.remaining+'명 / 필요 '+sent.required+'명 · 5분마다 한도 확인');}
+      if(sent.status==='quota_wait'){nextDelay=sent.retryAfterMs||300000;note('메일 한도 회복 대기 · 잔여 '+sent.remaining+'명 / 필요 '+sent.required+'명 · 다음 확인 '+new Date(Date.now()+nextDelay).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}));}
       else if(sent.status==='retry')note('등록 내용 변경 · 다음 확인에서 보고서를 다시 생성합니다.');
       else if(sent.status==='success'&&sent.pdfAttached&&sent.inlineImage)note('전체 보고서 발송 완료 · '+sent.sentCount+'명 · 본문 이미지 + PDF 첨부');
       else if(sent.reason==='final_already_sent')note('다른 창에서 이미 발송 완료 · 중복 발송하지 않습니다.');
