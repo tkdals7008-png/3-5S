@@ -23,3 +23,9 @@ test('invalid connection key cannot read snapshot or send',()=>{const h=harness(
 
 test('insufficient quota waits without rendering or sending and records pending date',()=>{const h=harness({quota:0});const s=h.c.pcReportStatus_({key:'private-test-key'});assert.equal(s.status,'quota_wait');assert.equal(s.remaining,0);assert.equal(s.required,1);assert.equal(s.snapshot,undefined);assert.equal(h.sent,0);assert.equal(h.properties.MM_PC_PENDING_DATE,'2026-10-12');});
 test('pending Monday report can send on Tuesday after quota recovers',()=>{const h=harness({weekday:'2'});h.properties.MM_PC_PENDING_DATE='2026-10-12';assert.equal(h.c.pcReportSend_(payload(h)).status,'success');assert.equal(h.sent,1);assert.equal(h.c.pcReportStatus_({key:'private-test-key'}).reason,'not_monday');assert.equal(h.properties.MM_PC_PENDING_DATE,undefined);});
+test('manual rich report rejects insufficient total quota before decoding or sending any batch',()=>{
+  let sends=0;const c={MailApp:{getRemainingDailyQuota:()=>32,sendEmail:()=>sends++},Utilities:{base64Decode:()=>{throw Error('must not decode while quota insufficient');}}};
+  vm.createContext(c);vm.runInContext(readFileSync(new URL('../apps-script/RichMail.gs',import.meta.url),'utf8'),c);
+  const result=c.deliverRichReportEmail_({recipients:Array.from({length:35},(_,i)=>'test'+i+'@example.com'),reportImageBase64:'image',reportPdfBase64:'pdf'});
+  assert.equal(result.status,'error');assert.equal(result.remaining,32);assert.equal(result.required,35);assert.equal(sends,0);
+});
