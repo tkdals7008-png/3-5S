@@ -1,3 +1,7 @@
+function setupMyMachineSchedule() {
+  return setupAutoMailTrigger_();
+}
+
 const AUTO_MAIL_HANDLER = 'scheduledMondayAutoMail_';
 
 function setupAutoMailTrigger_() {
@@ -61,7 +65,7 @@ function sendMissingAlert_(st) {
   st.missing.forEach(function(x){ if(x.email) recipients.push(x.email); });
   st.mails.forEach(function(m){
     var role=String(m.role||'팀원').trim();
-    if(role==='임원' || (role==='팀장' && missingTeams[String(m.team||'').trim()])) recipients.push(m.email);
+    if(role==='관리자' || role==='임원' || (role==='팀장' && missingTeams[String(m.team||'').trim()])) recipients.push(m.email);
   });
   recipients=uniqueEmails_(recipients);
   if(!recipients.length) throw Error('09시 현황 메일 수신자가 없습니다. 메일 설정의 이름/소속팀/구분을 확인해 주세요.');
