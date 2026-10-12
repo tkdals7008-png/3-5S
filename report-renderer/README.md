@@ -1,21 +1,15 @@
-# Automatic full report — deployment pending
+# PC automatic full report (no Cloud Run deployment)
 
-This branch is not ready for production until the renderer has been deployed and a real browser/PDF acceptance check has passed. Existing production remains unchanged.
+Uses the administrator's existing browser on an always-on company PC. No paid cloud renderer, Docker service or new external-request permission is needed. This is not configured on the user's PC yet.
 
-The renderer opens the same administrator report, selects the inspection date and daily report mode, and calls the same image/PDF builder used by manual mail. Browser POST requests are blocked. Recipient email addresses are never sent to the renderer. An incomplete photo load fails the render. Apps Script sends the existing rich email format and only records successful completion after attachment checks. A new completion marker permits the full report after an older list-only email.
+After deploying:
+1. Open Apps Script, select `setupMyMachinePCReport`, and run once. Copy its connection key from the execution log; keep it private and do not send it in chat.
+2. Open the existing `admin.html` address with `?autoReport=pc` appended.
+3. Enter the key into the PC automatic report panel and click 자동 발송 시작.
+4. Leave this window open and preferably visible, with the PC awake and online. Closing/reloading the page stops automatic checking; reopen and start again. Background browser throttling, sleep or network loss may delay delivery. The key is kept only in page memory, not saved in local storage or URLs.
 
-## Required deployment
+Every 10 seconds after the prior check finishes, this page asks for completion. After all assigned machines are registered (including substitute inspectors), it renders the same daily administrator report with the shared manual image/PDF builder. Any failed photo load aborts the capture. Recipient selection stays on the server. A locked send rechecks the latest record/settings/recipient revision and completion marker before delivery. Successful delivery records the new full-report marker; older list-only mail does not suppress the full report. No public business report or snapshot is committed.
 
-An authorized Google Cloud project with billing and Cloud Run/Artifact Registry access is required. No such project credentials are currently connected.
+The existing automatic missing reminders continue. Once registration is complete they stop and wait for the PC report instead of sending the old participant list. Completion before 09:00 is supported. Detection has a polling delay of approximately 10 seconds plus rendering time, longer if the browser is throttled. This is not an instantaneous server push.
 
-1. Build from repository root with `docker build -f report-renderer/Dockerfile -t IMAGE .` and push to the project's Artifact Registry.
-2. Deploy IMAGE to Cloud Run with memory at least 2 GiB, concurrency 1, request timeout 240 seconds. Configure `MM_RENDER_TOKEN` from Secret Manager with a random token of at least 32 characters. The endpoint may be publicly reachable but every render request requires this token. Do not place the token in source, command history, report records, or logs.
-3. Set Apps Script properties `MM_REPORT_RENDER_URL` to the HTTPS service URL plus `/render`, and `MM_REPORT_RENDER_TOKEN` to the same secret. Authorize the new external-request scope before deploying Apps Script.
-4. Validate a synthetic report first: Korean text, all photos, full inline image, every PDF page, exact match with manual report. Then verify a real date with administrator approval. Do not store business snapshots or reports in this public repository or public Actions artifacts.
-5. Merge/deploy only after these checks. Check sent mail includes the PDF and body image. The old list-only marker is intentionally ignored, so the first check may send today's full report to all active configured recipients.
-
-Run `node --test report-renderer/test.mjs` for scheduling/retry checks. Actual browser/PDF visual verification remains required; local Chromium installation failed in this workspace. No report generation has been visually verified yet.
-
-## Current limits
-
-Monday public holiday shifting is separate unfinished work and is not implemented by this branch. Mail batch delivery is not transactional: if a later batch fails, an earlier batch can receive a duplicate on retry (existing manual delivery limitation). Renderer credentials, production connection, and actual email delivery are not completed by committing this branch.
+Validation: `node --test report-renderer/test.mjs`. Actual browser image/PDF visual verification and real email delivery are still required. Local Chromium installation failed; no visual acceptance claimed. Monday holiday shifting remains separate unfinished work. Mail batch sending retains the existing partial-delivery retry limitation.
