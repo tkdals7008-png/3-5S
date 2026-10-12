@@ -29,3 +29,5 @@ test('manual rich report rejects insufficient total quota before decoding or sen
   const result=c.deliverRichReportEmail_({recipients:Array.from({length:35},(_,i)=>'test'+i+'@example.com'),reportImageBase64:'image',reportPdfBase64:'pdf'});
   assert.equal(result.status,'error');assert.equal(result.remaining,32);assert.equal(result.required,35);assert.equal(sends,0);
 });
+
+test('quota waits until next 01:00 or 07:00 Korea time',()=>{const h=harness();assert.equal(h.c.pcQuotaRetryAfter_(new Date('2026-10-12T20:00:00+09:00')),5*3600000);assert.equal(h.c.pcQuotaRetryAfter_(new Date('2026-10-12T01:00:00+09:00')),6*3600000);assert.equal(h.c.pcQuotaRetryAfter_(new Date('2026-10-12T07:00:00+09:00')),18*3600000);});
