@@ -26,11 +26,18 @@ function pcReportRevision_(st,snapshot){
 function pcReportStatus_(d){
   verifyPCReportKey_(d);
   var now=new Date(),tz=Session.getScriptTimeZone()||'Asia/Seoul';
-  if(Utilities.formatDate(now,tz,'u')!=='1')return {status:'skip',reason:'not_monday'};
-  var week=autoMailWeekKey_(now),props=PropertiesService.getScriptProperties();
+  var props=PropertiesService.getScriptProperties(),pending=props.getProperty('MM_PC_PENDING_DATE');
+  if(pending&&props.getProperty('MM_REPORT_FINAL_'+pending)==='Y'){props.deleteProperty('MM_PC_PENDING_DATE');pending='';}
+  if(Utilities.formatDate(now,tz,'u')!=='1'&&!pending)return {status:'skip',reason:'not_monday'};
+  var week=pending||autoMailWeekKey_(now);
   if(props.getProperty('MM_REPORT_FINAL_'+week)==='Y')return {status:'skip',reason:'final_already_sent'};
   var st=getAutoMailStatus_(week);
   if(!st.total||st.missing.length)return {status:'waiting',missing:st.missing.length};
+  if(pending!==week)props.setProperty('MM_PC_PENDING_DATE',week);
+  var required=uniqueEmails_(st.mails.map(function(m){return m.email;})).length;
+  var remaining=MailApp.getRemainingDailyQuota();
+  if(!required)throw Error('사용 체크된 전체 메일 수신자가 없습니다.');
+  if(remaining<required)return {status:'quota_wait',date:week,remaining:remaining,required:required,retryAfterMs:300000};
   var snapshot=pcReportSnapshot_(st);
   return {status:'ready',snapshot:snapshot,revision:pcReportRevision_(st,snapshot)};
 }
@@ -45,7 +52,8 @@ function pcReportSend_(d){
     var st=getAutoMailStatus_(status.snapshot.date);
     var recipients=uniqueEmails_(st.mails.map(function(m){return m.email;}));
     if(!recipients.length)throw Error('사용 체크된 전체 메일 수신자가 없습니다.');
-    if(MailApp.getRemainingDailyQuota()<recipients.length)throw Error('메일 일일 잔여 한도 부족');
+    var remaining=MailApp.getRemainingDailyQuota();
+    if(remaining<recipients.length)return {status:'quota_wait',date:status.snapshot.date,remaining:remaining,required:recipients.length,retryAfterMs:300000};
     var payload={recipients:recipients,subject:'[My Machine] '+status.snapshot.date+' 3정5S 점검 결과',body:'My Machine 3정5S 전체 등록완료 보고서입니다.',reportImageBase64:d.reportImageBase64,reportImageMimeType:'image/jpeg',reportImageName:'MyMachine_'+status.snapshot.date+'.jpg',reportPdfBase64:d.reportPdfBase64,reportPdfName:'MyMachine_'+status.snapshot.date+'.pdf'};
     var result=deliverRichReportEmail_(payload);
     if(result.status!=='success'||!result.inlineImage||!result.pdfAttached||result.sentCount!==recipients.length)throw Error(result.message||'전체 보고서 발송 실패');

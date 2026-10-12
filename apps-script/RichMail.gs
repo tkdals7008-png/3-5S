@@ -27,6 +27,9 @@ function deliverRichReportEmail_(d) {
     return ({status:'error', message:'첨부용 PDF 데이터가 없습니다.'});
   }
 
+  var remaining=MailApp.getRemainingDailyQuota();
+  if(remaining<rs.length)return {status:'error',message:'메일 일일 잔여 한도 부족: 잔여 '+remaining+'명 / 필요 '+rs.length+'명',remaining:remaining,required:rs.length};
+
   var imageBytes = Utilities.base64Decode(String(d.reportImageBase64));
   var imageBlob = Utilities.newBlob(
     imageBytes,
