@@ -35,11 +35,14 @@ function getAutoMailStatus_(weekKey) {
 
   var targets=[], seen={};
   machines.forEach(function(m){
-    var n=normName_(m.owner);
-    if(!n || seen[n]) return;
-    seen[n]=true;
+    var n=normName_(m.owner),machine=String(m.machine||'').trim();
+    if(!n || !machine) return;
     var person=byName[n]||null;
-    targets.push({name:String(m.owner||'').trim(), machine:String(m.machine||'').trim(), team:(person&&person.team)||String(m.team||'').trim(), email:(person&&person.email)||'', linked:!!person});
+    if(!seen[n]){
+      seen[n]={name:String(m.owner||'').trim(), machines:[], team:(person&&person.team)||String(m.team||'').trim(), email:(person&&person.email)||'', linked:!!person};
+      targets.push(seen[n]);
+    }
+    if(seen[n].machines.indexOf(machine)<0) seen[n].machines.push(machine);
   });
 
   var sheet=getDataSheet_(), vals=sheet.getDataRange().getValues(), registered={};
@@ -47,9 +50,13 @@ function getAutoMailStatus_(weekKey) {
     var ds=vals[i][0];
     if(ds instanceof Date) ds=Utilities.formatDate(ds,Session.getScriptTimeZone(),'yyyy-MM-dd');
     else ds=String(ds||'').slice(0,10);
-    if(ds===weekKey) registered[normName_(vals[i][1])]=true;
+    if(ds===weekKey) registered[normName_(vals[i][2])]=true;
   }
-  targets.forEach(function(t){t.registered=!!registered[normName_(t.name)];});
+  targets.forEach(function(t){
+    t.missingMachines=t.machines.filter(function(m){return !registered[normName_(m)];});
+    t.registered=t.missingMachines.length===0;
+    t.machine=(t.registered?t.machines:t.missingMachines).join(', ');
+  });
   var missing=targets.filter(function(t){return !t.registered;});
   return {weekKey:weekKey,settings:settings,mails:mails,targets:targets,missing:missing,total:targets.length,done:targets.length-missing.length};
 }
@@ -87,16 +94,16 @@ function sendMissingAlert_(st, reminderNo) {
 function sendFinalAutoReport_(st) {
   var recipients=uniqueEmails_(st.mails.map(function(m){return m.email;}));
   if(!recipients.length) throw Error('사용 체크된 전체 메일 수신자가 없습니다.');
-  var sheet=getDataSheet_(), vals=sheet.getDataRange().getValues(), byName={};
+  var sheet=getDataSheet_(), vals=sheet.getDataRange().getValues(), byMachine={};
   for(var i=1;i<vals.length;i++){
     var ds=vals[i][0]; if(ds instanceof Date) ds=Utilities.formatDate(ds,Session.getScriptTimeZone(),'yyyy-MM-dd'); else ds=String(ds||'').slice(0,10);
     if(ds!==st.weekKey) continue;
     var ok=0,ng=0,na=0;
     for(var j=3;j<=12;j++){if(vals[i][j]==='O')ok++;else if(vals[i][j]==='X')ng++;else if(vals[i][j]==='N/A')na++;}
-    byName[normName_(vals[i][1])]={name:vals[i][1],machine:vals[i][2],ok:ok,ng:ng,na:na,issue:vals[i][13]||'',imm:Number(vals[i][15]||0),req:Number(vals[i][16]||0)};
+    byMachine[normName_(vals[i][2])]={name:vals[i][1],machine:vals[i][2],ok:ok,ng:ng,na:na,issue:vals[i][13]||'',imm:Number(vals[i][15]||0),req:Number(vals[i][16]||0)};
   }
-  var rows=st.targets.map(function(t){var r=byName[normName_(t.name)]||{};return '<tr><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(t.team||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(t.name)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.machine||t.machine||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+Number(r.ok||0)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+Number(r.ng||0)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.issue||'-')+'</td></tr>';}).join('');
-  var html='<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#172033"><div style="max-width:900px;margin:auto"><div style="background:#123a66;color:#fff;padding:18px;border-radius:12px"><div style="font-size:23px;font-weight:800">My Machine 3정5S 전체 등록완료</div><div style="margin-top:6px">'+escAuto_(st.weekKey)+' / 전체 '+st.total+'명 등록완료</div></div><p style="line-height:1.7">이번 주 점검 대상자가 모두 등록을 완료하여 최종 결과를 자동 발송합니다.</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:8px;text-align:left">팀</th><th style="padding:8px;text-align:left">점검자</th><th style="padding:8px;text-align:left">설비</th><th style="padding:8px">양호</th><th style="padding:8px">미흡</th><th style="padding:8px;text-align:left">비고</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  var rows=st.targets.map(function(t){return t.machines.map(function(machine){var r=byMachine[normName_(machine)]||{};return '<tr><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(t.team||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(t.name)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.name||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.machine||machine||'-')+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+Number(r.ok||0)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+Number(r.ng||0)+'</td><td style="padding:8px;border-bottom:1px solid #ddd">'+escAuto_(r.issue||'-')+'</td></tr>';}).join('');}).join('');
+  var html='<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#172033"><div style="max-width:900px;margin:auto"><div style="background:#123a66;color:#fff;padding:18px;border-radius:12px"><div style="font-size:23px;font-weight:800">My Machine 3정5S 전체 등록완료</div><div style="margin-top:6px">'+escAuto_(st.weekKey)+' / 전체 '+st.total+'명 담당 설비 등록완료</div></div><p style="line-height:1.7">이번 주 점검 대상자가 모두 등록을 완료하여 최종 결과를 자동 발송합니다.</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:8px;text-align:left">팀</th><th style="padding:8px;text-align:left">담당자</th><th style="padding:8px;text-align:left">실제 점검자</th><th style="padding:8px;text-align:left">설비</th><th style="padding:8px">양호</th><th style="padding:8px">미흡</th><th style="padding:8px;text-align:left">비고</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   sendAutoMailBatched_(recipients,'[My Machine] '+st.weekKey+' 3정5S 전체 등록완료',html,'My Machine 3정5S 전체 등록완료 결과입니다.');
   return recipients.length;
 }

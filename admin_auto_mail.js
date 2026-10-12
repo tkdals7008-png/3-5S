@@ -16,7 +16,7 @@
   function addAutoMailPanel_(){
     const sec=document.getElementById('mailSection'); if(!sec||document.getElementById('autoMailPanel'))return;
     const d=document.createElement('div');d.id='autoMailPanel';d.style.cssText='margin-top:18px;padding:16px;border:1px solid #c9d6e5;border-radius:12px;background:#f7faff';
-    d.innerHTML='<div style="font-weight:800;font-size:16px;margin-bottom:8px">자동 메일 운영</div><div style="font-size:13px;line-height:1.7;color:#506174;margin-bottom:10px">월요일 09시 이후: 미등록자가 있으면 미등록자 + 해당 팀장 + 사용 체크된 관리자 및 임원에게 1시간 간격으로 알림. 미등록자가 없으면 사용 체크된 전체 수신자에게 결과 메일 발송. 이후 전원 등록 완료 시 전체 결과 메일을 1회 자동 발송합니다.</div><button class="btn" id="btnSetupAutoMail" type="button">월요일 09시 자동메일 설정</button> <button class="btn" id="btnTestAutoMail" type="button">현재 기준 자동메일 테스트</button>';
+    d.innerHTML='<div style="font-weight:800;font-size:16px;margin-bottom:8px">자동 메일 운영</div><div style="font-size:13px;line-height:1.7;color:#506174;margin-bottom:10px">월요일 09시 이후(대리 점검도 설비 등록으로 인정): 미등록자가 있으면 미등록자 + 해당 팀장 + 사용 체크된 관리자 및 임원에게 1시간 간격으로 알림. 미등록자가 없으면 사용 체크된 전체 수신자에게 결과 메일 발송. 이후 전원 등록 완료 시 전체 결과 메일을 1회 자동 발송합니다.</div><button class="btn" id="btnSetupAutoMail" type="button">월요일 09시 자동메일 설정</button> <button class="btn" id="btnTestAutoMail" type="button">현재 기준 자동메일 테스트</button>';
     sec.appendChild(d);
     document.getElementById('btnSetupAutoMail').onclick=()=>autoMailAction_('setup_auto_mail','자동메일 설정');
     document.getElementById('btnTestAutoMail').onclick=()=>{if(confirm('현재 데이터를 기준으로 실제 자동메일 발송 로직을 테스트합니다. 계속할까요?'))autoMailAction_('run_auto_mail_check','자동메일 테스트');};
