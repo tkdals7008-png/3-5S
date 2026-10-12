@@ -9,8 +9,8 @@ function setupAutoMailTrigger_() {
     if (t.getHandlerFunction() === AUTO_MAIL_HANDLER) ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger(AUTO_MAIL_HANDLER)
-    .timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(9).nearMinute(0).create();
-  return {status:'success', message:'월요일 09시대 자동 확인이 설정되었습니다.'};
+    .timeBased().everyMinutes(5).create();
+  return {status:'success', message:'월요일 09시 이후 미등록자를 확인하고 1시간 간격으로 알리도록 설정했습니다.'};
 }
 
 function scheduledMondayAutoMail_() {
@@ -58,7 +58,8 @@ function uniqueEmails_(arr){
   var seen={}; return arr.map(String).map(function(x){return x.trim();}).filter(Boolean).filter(function(x){var k=x.toLowerCase();if(seen[k])return false;seen[k]=true;return true;});
 }
 
-function sendMissingAlert_(st) {
+function sendMissingAlert_(st, reminderNo) {
+  reminderNo=Number(reminderNo||1);
   var missingTeams={};
   st.missing.forEach(function(x){ if(x.team) missingTeams[x.team]=true; });
   var recipients=[];
@@ -78,8 +79,8 @@ function sendMissingAlert_(st) {
     return '<tr style="background:'+bg+'"><td style="padding:9px;border-bottom:1px solid #e6e6e6">'+escAuto_(x.team||'-')+'</td><td style="padding:9px;border-bottom:1px solid #e6e6e6;font-weight:700">'+escAuto_(x.name)+'</td><td style="padding:9px;border-bottom:1px solid #e6e6e6">'+escAuto_(x.machine||'-')+'</td><td style="padding:9px;border-bottom:1px solid #e6e6e6;color:'+color+';font-weight:800">'+label+'</td></tr>';
   }).join('');
 
-  var html='<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#172033"><div style="max-width:760px;margin:auto"><div style="background:#123a66;color:white;padding:18px;border-radius:12px"><div style="font-size:23px;font-weight:800">09시 My Machine 점검 현황</div><div style="margin-top:6px">전체 '+st.total+'명 / 완료 '+st.done+'명 / 미등록 '+st.missing.length+'명</div></div><p style="font-size:14px;line-height:1.7">09시 현재 전체 점검 대상자의 등록 현황입니다. 미등록자는 My Machine 3정5S 점검 결과를 등록해 주세요.</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:9px;text-align:left">팀</th><th style="padding:9px;text-align:left">점검자</th><th style="padding:9px;text-align:left">설비</th><th style="padding:9px;text-align:left">상태</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-  sendAutoMailBatched_(recipients,'[My Machine] 09시 점검현황 - 완료 '+st.done+'명 / 미등록 '+st.missing.length+'명',html,'09시 현재 전체 '+st.total+'명 중 완료 '+st.done+'명, 미등록 '+st.missing.length+'명입니다.');
+  var html='<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#172033"><div style="max-width:760px;margin:auto"><div style="background:#123a66;color:white;padding:18px;border-radius:12px"><div style="font-size:23px;font-weight:800">My Machine 미등록 알림</div><div style="margin-top:6px">전체 '+st.total+'명 / 완료 '+st.done+'명 / 미등록 '+st.missing.length+'명</div></div><p style="font-size:14px;line-height:1.7">현재 전체 점검 대상자의 등록 현황입니다. 미등록자는 My Machine 3정5S 점검 결과를 등록해 주세요.</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:9px;text-align:left">팀</th><th style="padding:9px;text-align:left">점검자</th><th style="padding:9px;text-align:left">설비</th><th style="padding:9px;text-align:left">상태</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  sendAutoMailBatched_(recipients,'[My Machine] '+st.weekKey+' '+reminderNo+'차 미등록 알림 - 완료 '+st.done+'명 / 미등록 '+st.missing.length+'명',html,'현재 전체 '+st.total+'명 중 완료 '+st.done+'명, 미등록 '+st.missing.length+'명입니다.');
   return recipients.length;
 }
 
@@ -108,19 +109,30 @@ function sendAutoMailBatched_(recipients,subject,html,body){
 
 function runMondayAutoMailCheck_(manual) {
   var now=new Date(), tz=Session.getScriptTimeZone()||'Asia/Seoul', dow=Utilities.formatDate(now,tz,'u');
-  if(!manual && dow!=='1') return {status:'skip',reason:'not_monday'};
-  var week=autoMailWeekKey_(now), props=PropertiesService.getScriptProperties();
-  var st=getAutoMailStatus_(week);
-  if(!st.total) return {status:'error',message:'활성 설비의 담당자가 없어 자동메일 대상을 계산할 수 없습니다.'};
-
-  if(st.missing.length===0){
-    if(props.getProperty('MM_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent',total:st.total};
-    var n=sendFinalAutoReport_(st); props.setProperty('MM_FINAL_'+week,'Y'); props.setProperty('MM_0900_'+week,'Y');
-    return {status:'success',type:'final',sentCount:n,total:st.total,missing:0};
-  }
-  if(props.getProperty('MM_0900_'+week)==='Y') return {status:'skip',reason:'0900_already_sent',total:st.total,missing:st.missing.length};
-  var sent=sendMissingAlert_(st); props.setProperty('MM_0900_'+week,'Y');
-  return {status:'success',type:'missing',sentCount:sent,total:st.total,done:st.done,missing:st.missing.length};
+  if(dow!=='1') return {status:'skip',reason:'not_monday'};
+  if(Number(Utilities.formatDate(now,tz,'H'))<9) return {status:'skip',reason:'before_0900'};
+  var lock=LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var week=autoMailWeekKey_(now), props=PropertiesService.getScriptProperties();
+    if(props.getProperty('MM_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent'};
+    var st=getAutoMailStatus_(week);
+    if(!st.total) return {status:'error',message:'활성 설비의 담당자가 없어 자동메일 대상을 계산할 수 없습니다.'};
+    if(st.missing.length===0){
+      var n=sendFinalAutoReport_(st); props.setProperty('MM_FINAL_'+week,'Y'); props.setProperty('MM_0900_'+week,'Y');
+      return {status:'success',type:'final',sentCount:n,total:st.total,missing:0};
+    }
+    var firstSent=props.getProperty('MM_0900_'+week)==='Y';
+    var last=Number(props.getProperty('MM_LAST_ALERT_'+week)||0);
+    // 구버전이 보낸 1차 알림도 중복 발송하지 않고 다음 차수로 이어간다.
+    if(!last && firstSent) last=new Date(week+'T09:00:00+09:00').getTime();
+    if(last && now.getTime()-last<3600000) return {status:'skip',reason:'hour_not_elapsed',missing:st.missing.length};
+    var count=Number(props.getProperty('MM_ALERT_COUNT_'+week)||(firstSent?1:0))+1;
+    var sent=sendMissingAlert_(st,count);
+    props.setProperty('MM_0900_'+week,'Y');
+    props.setProperty('MM_LAST_ALERT_'+week,String(now.getTime()));
+    props.setProperty('MM_ALERT_COUNT_'+week,String(count));
+    return {status:'success',type:'missing',reminderNo:count,sentCount:sent,total:st.total,done:st.done,missing:st.missing.length};
+  } finally { lock.releaseLock(); }
 }
 
 function onInspectionSaved_(inspectDate) {
@@ -133,6 +145,8 @@ function onInspectionSaved_(inspectDate) {
   var hour=Number(Utilities.formatDate(now,tz,'H'));
   if(hour<9) return {status:'skip',reason:'before_0900'};
 
+  var lock=LockService.getScriptLock(); lock.waitLock(30000);
+  try {
   var props=PropertiesService.getScriptProperties();
   if(props.getProperty('MM_FINAL_'+week)==='Y') return {status:'skip',reason:'final_already_sent'};
 
@@ -143,4 +157,5 @@ function onInspectionSaved_(inspectDate) {
     return {status:'success',type:'final',sentCount:n,total:st.total};
   }
   return {status:'skip',reason:'not_complete',missing:st.missing.length};
+  } finally { lock.releaseLock(); }
 }
