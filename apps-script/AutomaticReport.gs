@@ -39,7 +39,8 @@ function pcReportStatus_(d){
   var now=new Date(),tz=Session.getScriptTimeZone()||'Asia/Seoul';
   var props=PropertiesService.getScriptProperties(),pending=props.getProperty('MM_PC_PENDING_DATE');
   if(pending&&props.getProperty('MM_REPORT_FINAL_'+pending)==='Y'){props.deleteProperty('MM_PC_PENDING_DATE');pending='';}
-  if(Utilities.formatDate(now,tz,'u')!=='1'&&!pending)return {status:'skip',reason:'not_monday'};
+  // Recover this week's unsent Monday report even if the PC first starts
+  // after midnight, before a pending date could be recorded.
   var week=pending||autoMailWeekKey_(now);
   if(props.getProperty('MM_REPORT_FINAL_'+week)==='Y')return {status:'skip',reason:'final_already_sent'};
   var st=getAutoMailStatus_(week);
