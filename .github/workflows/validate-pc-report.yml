@@ -1,7 +1,7 @@
 name: Validate PC report
 on:
   push:
-    branches: [feature/automatic-full-report, fix/pc-report-quota]
+    branches: [feature/automatic-full-report, 'fix/**']
     paths: ['admin*.js', 'admin*.html', 'apps-script/**', 'report-renderer/**', '.github/workflows/validate-pc-report.yml']
 permissions:
   contents: read
