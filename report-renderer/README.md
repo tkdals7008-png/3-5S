@@ -12,4 +12,4 @@ Every 10 seconds after the prior check finishes, this page asks for completion. 
 
 The existing automatic missing reminders continue. Once registration is complete they stop and wait for the PC report instead of sending the old participant list. Completion before 09:00 is supported. Detection has a polling delay of approximately 10 seconds plus rendering time, longer if the browser is throttled. This is not an instantaneous server push.
 
-Validation: `node --test report-renderer/test.mjs`. Actual browser image/PDF visual verification and real email delivery are still required. Local Chromium installation failed; no visual acceptance claimed. Monday holiday shifting remains separate unfinished work. Mail batch sending retains the existing partial-delivery retry limitation.
+Validation: `node --test report-renderer/test.mjs`. Synthetic browser image/PDF checks run in GitHub Actions. Actual user-PC activation and real email delivery remain required. Monday holiday shifting remains separate unfinished work. Mail batch sending retains the existing partial-delivery retry limitation.
