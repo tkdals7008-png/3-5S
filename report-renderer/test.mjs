@@ -15,6 +15,29 @@ function harness({complete=true,fail=false,hour=8,quota=100,weekday='1'}={}){
   return {c,properties,get sent(){return sent},get released(){return released}};
 }
 function payload(h){const s=h.c.pcReportStatus_({key:'private-test-key'});return {key:'private-test-key',date:s.snapshot.date,revision:s.revision,reportImageBase64:'aW1hZ2U=',reportPdfBase64:'cGRm'};}
+test('third missing alert sends once, then repeated and manual checks stop',()=>{
+ const h=harness({complete:false,hour:11});let sends=0;
+ h.properties['MM_ALERT_COUNT_2026-10-12']='2';
+ h.c.sendMissingAlert_=(_,n)=>{assert.equal(n,3);sends++;return 1;};
+ assert.equal(h.c.runMondayAutoMailCheck_(false).reminderNo,3);
+ assert.equal(h.c.runMondayAutoMailCheck_(false).reason,'alert_limit_reached');
+ assert.equal(h.c.runMondayAutoMailCheck_(true).reason,'alert_limit_reached');
+ assert.equal(sends,1);assert.equal(h.properties['MM_ALERT_COUNT_2026-10-12'],'3');
+});
+test('existing counts above three stop, while full completion still proceeds',()=>{
+ const h=harness({complete:false,hour:12});h.properties['MM_ALERT_COUNT_2026-10-12']='4';
+ h.c.sendMissingAlert_=()=>{throw Error('must not send');};
+ assert.equal(h.c.runMondayAutoMailCheck_(false).reason,'alert_limit_reached');
+ const done=harness({hour:12});done.properties['MM_ALERT_COUNT_2026-10-12']='3';
+ assert.equal(done.c.runMondayAutoMailCheck_(false).status,'pending_report');
+});
+test('failed alert does not consume a count; a new week starts at one',()=>{
+ const h=harness({complete:false,hour:10});h.properties['MM_ALERT_COUNT_2026-10-05']='3';
+ h.c.sendMissingAlert_=()=>{throw Error('mail failure');};
+ assert.throws(()=>h.c.runMondayAutoMailCheck_(false));assert.equal(h.properties['MM_ALERT_COUNT_2026-10-12'],undefined);
+ h.c.sendMissingAlert_=(_,n)=>{assert.equal(n,1);return 1;};
+ assert.equal(h.c.runMondayAutoMailCheck_(false).reminderNo,1);
+});
 test('complete before nine stops reminders and waits for PC rich report',()=>{const h=harness();assert.equal(h.c.runMondayAutoMailCheck_(false).status,'pending_report');assert.equal(h.c.onInspectionSaved_('2026-10-12').status,'pending_report');assert.equal(h.sent,0);});
 test('missing reminders still wait until nine',()=>{const h=harness({complete:false});assert.equal(h.c.runMondayAutoMailCheck_(false).reason,'before_0900');assert.equal(h.c.pcReportStatus_({key:'private-test-key'}).status,'waiting');});
 test('PC sends report once, independent of prior list-only marker',()=>{const h=harness();h.properties['MM_FINAL_2026-10-12']='Y';const p=payload(h);assert.equal(h.c.pcReportSend_(p).status,'success');assert.equal(h.c.pcReportSend_(p).reason,'final_already_sent');assert.equal(h.sent,1);});
