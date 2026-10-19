@@ -3,6 +3,7 @@ function setupMyMachineSchedule() {
 }
 
 const AUTO_MAIL_HANDLER = 'scheduledMondayAutoMail_';
+const MAX_MISSING_ALERTS = 3;
 
 function setupAutoMailTrigger_() {
   ScriptApp.getProjectTriggers().forEach(function(t){
@@ -10,7 +11,7 @@ function setupAutoMailTrigger_() {
   });
   ScriptApp.newTrigger(AUTO_MAIL_HANDLER)
     .timeBased().everyMinutes(5).create();
-  return {status:'success', message:'월요일 09시 이후 미등록자를 확인하고 1시간 간격으로 알리도록 설정했습니다.'};
+  return {status:'success', message:'월요일 09시 이후 미등록자를 확인하고 1시간 간격으로 최대 3회 알리도록 설정했습니다.'};
 }
 
 function scheduledMondayAutoMail_() {
@@ -117,11 +118,13 @@ function runMondayAutoMailCheck_(manual) {
     }
     if(Number(Utilities.formatDate(now,tz,'H'))<9) return {status:'skip',reason:'before_0900',missing:st.missing.length};
     var firstSent=props.getProperty('MM_0900_'+week)==='Y';
+    var previousCount=Number(props.getProperty('MM_ALERT_COUNT_'+week)||(firstSent?1:0));
+    if(previousCount>=MAX_MISSING_ALERTS) return {status:'skip',reason:'alert_limit_reached',reminderNo:previousCount,missing:st.missing.length};
     var last=Number(props.getProperty('MM_LAST_ALERT_'+week)||0);
     // 구버전이 보낸 1차 알림도 중복 발송하지 않고 다음 차수로 이어간다.
     if(!last && firstSent) last=new Date(week+'T09:00:00+09:00').getTime();
     if(last && now.getTime()-last<3600000) return {status:'skip',reason:'hour_not_elapsed',missing:st.missing.length};
-    var count=Number(props.getProperty('MM_ALERT_COUNT_'+week)||(firstSent?1:0))+1;
+    var count=previousCount+1;
     var sent=sendMissingAlert_(st,count);
     props.setProperty('MM_0900_'+week,'Y');
     props.setProperty('MM_LAST_ALERT_'+week,String(now.getTime()));
