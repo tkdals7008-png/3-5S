@@ -82,6 +82,8 @@ function doPost(e) {
     var lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
+    var receipt = findSubmission_(s, d.submissionId);
+    if (receipt) return jsonResponse({status:'success', requestNo:receipt.requestNo, alreadySaved:true});
     var existing = findInspectionRows_(s, d.inspectDate, d.machineId);
     if (existing.length && d.replaceExisting !== true) {
       return jsonResponse({status:"confirm_replace", existingCount:existing.length});
@@ -104,7 +106,7 @@ function doPost(e) {
     var done = Number(d.actionCompleteCount || imm);
     var detailSource = Object.assign({}, d, {itemActionsJson:JSON.stringify(mappedActions)});
     var detail = makeImprovementDetail(detailSource);
-    var reqNo = req > 0 ? createRequestNo(s) : "";
+    var reqNo = req > 0 ? createRequestNo(s, true) : "";
     var snap = d.itemNamesSnapshot || JSON.stringify(getItemSettings_());
     var actionJson = mappedActions.length ? JSON.stringify(mappedActions) : (d.itemActionsJson || "");
 
@@ -113,7 +115,7 @@ function doPost(e) {
       d.inspectDate || "", d.inspectorName || "", d.machineId || "",
       d.item1 || "", d.item2 || "", d.item3 || "", d.item4 || "", d.item5 || "",
       d.item6 || "", d.item7 || "", d.item8 || "", d.item9 || "", d.item10 || "",
-      d.issueRemarks || "", urls.join(", "), imm, req, done, detail, reqNo, "", "", snap, actionJson
+      d.issueRemarks || "", urls.join(", "), imm, req, done, detail, reqNo, "", "", snap, actionJson, d.submissionId || ""
     ]);
     existing.sort(function(a,b){return b-a;}).forEach(function(row){s.deleteRow(row);});
     } finally { lock.releaseLock(); }
@@ -132,6 +134,10 @@ function doGet(e) {
     if (a === "get_items") return jsonResponse({status:"success", items:getItemSettings_()});
     if (a === "get_admin_settings") return jsonResponse({status:"success", settings:getAdminSettings_()});
     if (a === "health") return jsonResponse({status:"success", api:"MyMachine", version:"V3"});
+    if (a === "check_submission") {
+      var receipt=findSubmission_(getDataSheet_(), (e.parameter||{}).submissionId);
+      return jsonResponse({status:"success", saved:!!receipt, requestNo:receipt?receipt.requestNo:""});
+    }
     if (a === "check_inspection") {
       var p = e.parameter || {};
       if (!p.date || !p.machine) return jsonResponse({status:"error", message:"일자와 설비가 필요합니다."});
@@ -192,7 +198,7 @@ function getDataSheet_() {
 }
 
 function ensureHeaders_(s) {
-  var h = {16:"즉시개선건수",17:"개선요청건수",18:"조치완료건수",19:"개선상세",20:"개선요청번호",21:"관리자조치내용",22:"관리자조치사진",23:"점검항목스냅샷",24:"개선상세JSON"};
+  var h = {16:"즉시개선건수",17:"개선요청건수",18:"조치완료건수",19:"개선상세",20:"개선요청번호",21:"관리자조치내용",22:"관리자조치사진",23:"점검항목스냅샷",24:"개선상세JSON",25:"등록요청ID"};
   Object.keys(h).forEach(function(c){ if (!s.getRange(1,+c).getValue()) s.getRange(1,+c).setValue(h[c]); });
 }
 
@@ -339,9 +345,9 @@ function makeImprovementDetail(d) {
   } catch (e) { return d.itemActionsJson; }
 }
 
-function createRequestNo(s) {
+function createRequestNo(s, alreadyLocked) {
   var l = LockService.getScriptLock();
-  l.waitLock(10000);
+  if (!alreadyLocked) l.waitLock(10000);
   try {
     var y = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy");
     var last = s.getLastRow(), m = 0;
@@ -353,7 +359,7 @@ function createRequestNo(s) {
       }
     });
     return "MM-" + y + "-" + ("0000" + (m+1)).slice(-4);
-  } finally { l.releaseLock(); }
+  } finally { if (!alreadyLocked) l.releaseLock(); }
 }
 
 function jsonResponse(o) {
@@ -364,4 +370,11 @@ function testMailPermission() {
   var e = Session.getActiveUser().getEmail();
   if (!e) throw Error("로그인된 Google 계정 이메일을 확인할 수 없습니다.");
   MailApp.sendEmail({to:e, subject:"[My Machine] 메일 기능 테스트", body:"My Machine 메일 발송 기능이 정상적으로 연결되었습니다.", name:"My Machine"});
+}
+
+function findSubmission_(s, id) {
+  if (!id || s.getLastColumn()<25 || s.getLastRow()<2) return null;
+  var rows=s.getRange(2,20,s.getLastRow()-1,6).getValues();
+  for(var i=rows.length-1;i>=0;i--) if(String(rows[i][5])===String(id)) return {requestNo:rows[i][0]||""};
+  return null;
 }
