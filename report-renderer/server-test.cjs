@@ -24,4 +24,11 @@ const h=harness();vm.runInContext(readFileSync('apps-script/ServerReport.gs','ut
 h.c.pcReportSnapshot_=()=>({records:[{date:'2026-11-16',machine:'6호기',inspector:'시험점검자',score:'7 / 1',xCount:1,issue:'누유 확인',itemActionsJson:JSON.stringify([{item:3,type:'request',text:'누유 점검 요청',priority:'보통',photos:{}}])}],items:[{no:3,name:'바닥 청소'}]});
 h.st.settings.machines=[{machine:'6호기',owner:'시험담당자',team:'제조팀'},{machine:'7호기',owner:'미등록담당자',team:'제조팀'}];h.st.targets=[{name:'미등록담당자',team:'제조팀',registered:false}];
 const report=h.c.buildServerReport_(h.st);assert.match(report.pdfHtml,/누유 점검 요청/);assert.match(report.pdfHtml,/미등록담당자/);assert.match(report.pdfHtml,/미점검/);assert.match(report.pdfHtml,/bgcolor="#123a66"/);assert.match(report.pdfHtml,/등록률/);assert.match(report.pdfHtml,/집계 시각/);assert.doesNotMatch(report.pdfHtml,/12시 기준/);writeFileSync('/tmp/mm-server-synthetic.html',report.pdfHtml);
-console.log('PASS: 09/10 slots, no 11 reminder, early completion, noon with missing/zero registrations, quota stop/admin notice, zero quota log, ambiguous send stop, exclusions, PC handoff, report content');
+assert.match(report.pdfHtml,/4\. 개선 관리 사진 참조/);
+assert.match(report.pdfHtml,/table-layout:fixed/);
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6M8sAAAAASUVORK5CYII=','base64');
+h.c.DriveApp={getFileById:()=>({getBlob:()=>({getContentType:()=> 'image/png',getBytes:()=>Array.from(png)})})};h.c.Utilities.base64Encode=b=>Buffer.from(b).toString('base64');
+const stress=Array.from({length:25},(_,i)=>({date:'2026-11-16',machine:(i+1)+'호기',inspector:'시험담당자',score:'7 / 0',xCount:i<7?1:0,itemActionsJson:JSON.stringify(i<7?[{item:3,type:i<4?'request':'immediate',text:'사진과 점검 내용 보존 시험',photos:{reqBefore:{url:'https://drive.google.com/file/d/mock-photo/view'},immBefore:{url:'https://drive.google.com/file/d/mock-photo/view'},immAfter:{url:'https://drive.google.com/file/d/mock-photo/view'}}}]:[])}));
+h.st.settings.machines=stress.map(r=>({machine:r.machine,team:'제조팀',owner:r.inspector}));h.c.pcReportSnapshot_=()=>({records:stress,items:[{no:3,name:'바닥에 기름이나 물은 청소 되었는가?'}]});
+const dense=h.c.buildServerReport_(h.st);assert.match(dense.pdfHtml,/width="80" height="60"/);assert.match(dense.pdfHtml,/data:image\/png;base64/);assert.equal(Object.keys(dense.inlineImages).length,1);writeFileSync('/tmp/mm-server-stress.html',dense.pdfHtml);
+console.log('PASS: schedule, quota holds, duplicate prevention, compact layout, 25-machine content and photo reuse');
