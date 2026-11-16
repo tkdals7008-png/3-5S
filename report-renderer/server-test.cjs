@@ -2,6 +2,7 @@ const {readFileSync,writeFileSync}=require('node:fs'),vm=require('node:vm'),asse
 function harness({hour=12,day='1',missing=1,quota=100,excluded=false,fail=false}={}){
  const props={},sent=[],logs=[];let renders=0;
  const c={console,Date,Session:{getScriptTimeZone:()=> 'Asia/Seoul'},Utilities:{formatDate:(_,__,f)=>f==='u'?day:f==='H'?String(hour):'2026-11-16',base64Encode:()=> 'YWJj'},PropertiesService:{getScriptProperties:()=>({getProperty:k=>props[k],setProperty:(k,v)=>props[k]=v,deleteProperty:k=>delete props[k]})},LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},MailApp:{getRemainingDailyQuota:()=>quota,sendEmail:d=>{if(fail)throw Error('mail failed');sent.push(d);}},DriveApp:{},HtmlService:{}};
+ c.LockService.getUserLock=c.LockService.getScriptLock;
  vm.createContext(c);for(const f of ['AutoMail','AutomaticReport','ServerReport'])vm.runInContext(readFileSync('apps-script/'+f+'.gs','utf8'),c);
  const st={weekKey:'2026-11-16',total:2,done:2-missing,missing:Array.from({length:missing},()=>({name:'B',team:'T'})),targets:[],mails:[{email:'admin@example.com',role:'관리자'},{email:'b@example.com'}],settings:{machines:[]}};
  c.getAutoMailStatus_=()=>st;c.serverReportExcluded_=()=>excluded;c.logServerReport_=(...x)=>logs.push(x);
