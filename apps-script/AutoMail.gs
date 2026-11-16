@@ -105,6 +105,7 @@ function sendAutoMailBatched_(recipients,subject,html,body){
 }
 
 function runMondayAutoMailCheck_(manual) {
+  if(PropertiesService.getScriptProperties().getProperty('MM_SERVER_REPORT_ENABLED')==='Y')return runServerReportCheck_();
   var now=new Date(), tz=Session.getScriptTimeZone()||'Asia/Seoul', dow=Utilities.formatDate(now,tz,'u');
   if(dow!=='1') return {status:'skip',reason:'not_monday'};
   var lock=LockService.getScriptLock(); lock.waitLock(30000);
@@ -134,6 +135,9 @@ function runMondayAutoMailCheck_(manual) {
 }
 
 function onInspectionSaved_(inspectDate) {
+  // The existing five-minute server trigger handles reports; do not delay
+  // the mobile save response with PDF generation or email delivery.
+  if(PropertiesService.getScriptProperties().getProperty('MM_SERVER_REPORT_ENABLED')==='Y')return {status:'pending_report',message:'서버에서 최대 약 5분 간격으로 보고서 발송 조건을 확인합니다.'};
   var tz=Session.getScriptTimeZone()||'Asia/Seoul', now=new Date();
   var week=autoMailWeekKey_(now);
   if(String(inspectDate||'').slice(0,10)!==week) return {status:'skip',reason:'not_this_monday'};
