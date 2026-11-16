@@ -36,6 +36,7 @@ function pcQuotaRetryAfter_(now){
 
 function pcReportStatus_(d){
   verifyPCReportKey_(d);
+  if(PropertiesService.getScriptProperties().getProperty('MM_SERVER_REPORT_ENABLED')==='Y')return {status:'skip',reason:'server_report_enabled'};
   var now=new Date(),tz=Session.getScriptTimeZone()||'Asia/Seoul';
   var props=PropertiesService.getScriptProperties(),pending=props.getProperty('MM_PC_PENDING_DATE');
   if(pending&&props.getProperty('MM_REPORT_FINAL_'+pending)==='Y'){props.deleteProperty('MM_PC_PENDING_DATE');pending='';}
