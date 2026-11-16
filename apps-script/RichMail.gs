@@ -45,6 +45,7 @@ function deliverRichReportEmail_(d) {
   );
 
   var title = d.subject || '[My Machine] 3정5S 점검 결과';
+  var engineerButton=engineerReportButtons_(title);
   var htmlBody = [
     '<div style="font-family:Arial,Malgun Gothic,sans-serif;background:#f3f6fb;padding:18px;color:#172033">',
     '<div style="max-width:1100px;margin:0 auto;background:#ffffff;border:1px solid #d9e2ef;border-radius:14px;padding:18px">',
@@ -57,6 +58,7 @@ function deliverRichReportEmail_(d) {
     '<img src="cid:reportImage" alt="My Machine 보고서" style="display:block;width:100%;height:auto;border:0">',
     '</div>',
     '<p style="font-size:12px;color:#68798d;margin:14px 0 0">첨부파일: ' + escapeHtmlForMail_(d.reportPdfName || 'MyMachine_Report.pdf') + '</p>',
+    engineerButton,
     '</div>',
     '</div>'
   ].join('');
@@ -95,3 +97,4 @@ function escapeHtmlForMail_(v) {
     .replace(/\"/g,'&quot;')
     .replace(/'/g,'&#39;');
 }
+
