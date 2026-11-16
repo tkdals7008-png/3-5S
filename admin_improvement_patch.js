@@ -55,6 +55,11 @@
     const s=parseAdminStore(row);s.requests[id]=Object.assign({},s.requests[id]||{},patch||{}, {updatedAt:new Date().toISOString()});return JSON.stringify(s);
   }
   function statusFor(q){return String((q&&q.adminMeta&&q.adminMeta.status)||localStatuses()[q&&q.id]||'요청');}
+  function engineerNote(q){
+    const m=q.adminMeta||{};if(!m.completedBy&&!m.text)return '';
+    const safe=x=>String(x||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return '<div style="font-size:12px;margin-top:6px;white-space:pre-wrap">'+safe(m.completedBy)+(m.text?'<br>'+safe(m.text):'')+'</div>';
+  }
 
   function itemNameFor(q){
     try{const raw=q.row.itemNamesSnapshot;const arr=Array.isArray(raw)?raw:JSON.parse(raw||'[]');const x=Array.isArray(arr)?arr.find(v=>Number(v.no)===Number(q.item)):null;if(x&&x.name)return x.name;}catch(e){}
@@ -86,7 +91,7 @@
     ensureRequestHeader();ensureAllHeadersCentered();const body=document.getElementById('requestBody');if(!body)return;
     body.innerHTML=requests.map(q=>{
       const st=statusFor(q),stCls=st==='완료'?'b-green':st==='진행중'?'b-blue':'b-orange',done=st==='완료';
-      return `<tr><td>${requestIdHtml(q)}</td><td>${q.row.date}</td><td>${q.row.machine}</td><td>${q.item}. ${itemNameFor(q)}</td><td>${q.row.inspector||'-'}</td><td>${q.priority}</td><td>${q.text||'-'}</td><td>${imgHtml(beforeUrls(q),'개선전')}</td><td>${imgHtml(afterUrl(q),'개선후')}</td><td><span class="badge ${stCls}">${st}</span></td><td class="noPrint"><button class="btn" onclick="setRequestProgress('${q.id}')">진행</button><button class="btn green" onclick="openRequestComplete('${q.id}')">${done?'완료사진 변경':'완료'}</button></td></tr>`;
+      return `<tr><td>${requestIdHtml(q)}</td><td>${q.row.date}</td><td>${q.row.machine}</td><td>${q.item}. ${itemNameFor(q)}</td><td>${q.row.inspector||'-'}</td><td>${q.priority}</td><td>${q.text||'-'}</td><td>${imgHtml(beforeUrls(q),'개선전')}</td><td>${imgHtml(afterUrl(q),'개선후')}</td><td><span class="badge ${stCls}">${st}</span>${engineerNote(q)}</td><td class="noPrint"><button class="btn" onclick="setRequestProgress('${q.id}')">진행</button><button class="btn green" onclick="openRequestComplete('${q.id}')">${done?'완료사진 변경':'완료'}</button></td></tr>`;
     }).join('')||'<tr><td colspan="11">개선요청 없음</td></tr>';
   };
 
@@ -149,3 +154,4 @@
   const run=()=>{ensureRequestHeader();ensureAllHeadersCentered();ensureModal();if(Array.isArray(window.rawData)&&window.rawData.length&&typeof window.compute==='function')window.compute();};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
 })();
+
