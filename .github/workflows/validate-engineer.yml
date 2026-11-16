@@ -1,0 +1,26 @@
+name: Validate engineer actions
+on:
+  push:
+    branches: ['fix/**']
+    paths: ['engineer.*', 'admin_improvement_patch.js', 'apps-script/**', 'report-renderer/**', '.github/workflows/validate-engineer.yml']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node report-renderer/engineer-test.cjs
+      - run: node report-renderer/server-test.cjs
+      - run: npm ci --prefix report-renderer
+      - run: node report-renderer/engineer-browser-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-engineer-screen
+          path: qa-output/engineer-*.png
+          retention-days: 1
