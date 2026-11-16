@@ -102,8 +102,8 @@ function serverReportPdf_(report) {
 function buildServerReport_(st) {
   var snapshot=pcReportSnapshot_(st),records=snapshot.records,images={},photoCache={},seq=0;
   var esc=escAuto_;
-  function table(headers,rows){return '<table border="1" cellspacing="0" cellpadding="7" style="border-collapse:collapse;width:100%;font-size:11px;border-color:#d9e2ef"><thead><tr style="background:#eaf2fb">'+headers.map(function(x){return '<th>'+esc(x)+'</th>';}).join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>';}
-  function row(cells){return '<tr style="page-break-inside:avoid">'+cells.map(function(x){return '<td>'+x+'</td>';}).join('')+'</tr>';}
+  function table(headers,rows){return '<table width="100%" border="1" bordercolor="#d9e2ef" cellspacing="0" cellpadding="8" style="border-collapse:collapse;width:100%;font-size:13px;border-color:#d9e2ef"><thead><tr bgcolor="#eef4fb" style="background-color:#eef4fb">'+headers.map(function(x){return '<th bgcolor="#eef4fb" style="font-weight:bold;color:#123a66;padding:8px;text-align:center">'+esc(x)+'</th>';}).join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>';}
+  function row(cells){return '<tr style="page-break-inside:avoid">'+cells.map(function(x){var text=String(x),color=text==='미점검'||text==='확인 필요'?'#fde4e4':text==='완료'||text==='양호'||text==='조치완료'?'#dff2e4':text==='개선요청'||text==='요청'?'#fff1d7':'';return '<td'+(color?' bgcolor="'+color+'"':'')+' style="padding:8px;vertical-align:middle;line-height:1.55;'+(color?'background-color:'+color+';font-weight:bold;':'')+'">'+x+'</td>';}).join('')+'</tr>';}
   function actions(r){try{var a=JSON.parse(r.itemActionsJson||'[]');return Array.isArray(a)?a:[];}catch(e){throw Error('개선 상세 데이터 형식 오류: '+r.machine);}}
   function pictures(value,label){
     var list=Array.isArray(value)?value:value?[value]:[];
@@ -112,7 +112,7 @@ function buildServerReport_(st) {
       if(!id)throw Error('사진 주소를 확인해 주세요.');
       var photo=photoCache[id];
       if(!photo){var blob=DriveApp.getFileById(id).getBlob();if(!/^image\//.test(blob.getContentType()))throw Error('사진 형식 오류');photo={cid:'mm_photo_'+(++seq),blob:blob};photoCache[id]=photo;images[photo.cid]=blob;}
-      return '<span><small>'+esc(label)+'</small><br><img style="max-width:160px;max-height:130px" src="PHOTO:'+photo.cid+'"></span>';
+      return '<span style="display:inline-block;margin:4px"><b style="color:#123a66;font-size:12px">'+esc(label)+'</b><br><img width="120" style="width:120px;height:auto;border:1px solid #d9e2ef;border-radius:7px" src="PHOTO:'+photo.cid+'"></span>';
     }).join(' ');
   }
   var allActions=[];records.forEach(function(r){actions(r).forEach(function(a){allActions.push({r:r,a:a});});});
@@ -127,6 +127,22 @@ function buildServerReport_(st) {
   html+='<h2>4. 개선 관리</h2>'+table(['설비','점검자','항목','구분','내용','우선순위','사진','상태','관리자 조치'],actionRows('request'));
   html+='<h2>5. 상세 점검 이력</h2>'+table(['설비','점검자','항목','구분','내용','우선순위','사진','상태','관리자 조치'],actionRows().concat(records.filter(function(r){return !actions(r).length;}).map(function(r){return row([esc(r.machine),esc(r.inspector),esc(r.xItems||'-'),Number(r.xCount)?'미흡':'양호',esc(r.improvementDetail||r.issue||'-'),'-','-',Number(r.xCount)?'확인 필요':'양호',esc(r.actionText||'-')]);})));
   html+='</body></html>';
+  // Google HTML-to-PDF may discard head styles. Inline visual structure and
+  // classic bgcolor/width attributes keep the email and converted PDF alike.
+  var generated=Utilities.formatDate(new Date(),'Asia/Seoul','yyyy-MM-dd HH:mm');
+  var subtitle='점검일 '+esc(st.weekKey)+' · 집계 시각 '+esc(generated)+' · '+(st.missing.length?'미등록 포함 현황':'전원 등록 완료');
+  html=html.replace(/<body>/,'<body style="font-family:Arial,Malgun Gothic,sans-serif;font-size:14px;color:#172033;background-color:#f3f6fb"><div style="padding:14px;background-color:#f3f6fb">');
+  html=html.replace(/<h1>[\s\S]*?<\/h1><p>[\s\S]*?<\/p>/,'<table width="100%" cellpadding="18" cellspacing="0" bgcolor="#123a66" style="width:100%;background-color:#123a66;border-radius:14px;margin-bottom:14px"><tr><td style="padding:18px;color:#ffffff"><font color="#ffffff" style="color:#ffffff"><b style="font-size:25px;color:#ffffff">My Machine 3정5S 점검 결과</b><br><span style="font-size:12px;color:#ffffff">Autonomous Maintenance &amp; Improvement System</span><br><br>'+subtitle+'</font></td></tr></table>');
+  var immediate=allActions.filter(function(x){return x.a.type==='immediate';}).length;
+  var requested=allActions.filter(function(x){return x.a.type==='request';}).length;
+  var rate=st.total?Math.round(st.done/st.total*1000)/10:0;
+  var metrics=[['점검 대상',st.total+'명','#235fbd','#f4f8fe'],['등록 완료',st.done+'명','#16813c','#f2fbf5'],['미등록',st.missing.length+'명','#c93636','#fff5f5'],['등록률',rate+'%','#6546a5','#f8f5ff'],['등록 이력',records.length+'건','#235fbd','#f4f8fe'],['미흡 항목',xCount+'건','#c93636','#fff5f5'],['즉시개선',immediate+'건','#16813c','#f2fbf5'],['개선요청',requested+'건','#c77600','#fff9ef']];
+  var cards='<table width="100%" cellspacing="6" cellpadding="10" style="width:100%;margin-bottom:14px">';
+  metrics.forEach(function(m,i){if(i%4===0)cards+='<tr>';cards+='<td width="25%" bgcolor="'+m[3]+'" style="background-color:'+m[3]+';border:1px solid #d9e2ef;border-top:4px solid '+m[2]+';padding:12px"><span style="font-size:12px;color:#65758a">'+m[0]+'</span><br><font color="'+m[2]+'"><b style="font-size:24px;color:'+m[2]+'">'+m[1]+'</b></font></td>';if(i%4===3)cards+='</tr>';});cards+='</table>';
+  html=html.replace(/(<h2>1\. 종합 현황<\/h2>)<p>[\s\S]*?<\/p>/,'$1'+cards);
+  var colors=[['#dceaf8','#3478b8'],['#e5f3e8','#5aa36c'],['#fff1d7','#d49732'],['#fde4e4','#d86b6b'],['#eee8f7','#8b72b5']];
+  html=html.replace(/<h2>([1-5])\. ([^<]+)<\/h2>/g,function(_,n,title){var color=colors[Number(n)-1];return '<table width="100%" cellspacing="0" cellpadding="10" style="width:100%;margin-top:18px;margin-bottom:10px;page-break-after:avoid"><tr><td bgcolor="'+color[0]+'" style="background-color:'+color[0]+';border-left:6px solid '+color[1]+';padding:11px;color:#123a66;font-size:18px;font-weight:bold">'+n+'. '+title+'</td></tr></table>';});
+  html=html.replace('</body>','</div></body>');
   var pdfHtml=html.replace(/PHOTO:([\w]+)/g,function(_,cid){var b=images[cid];return 'data:'+b.getContentType()+';base64,'+Utilities.base64Encode(b.getBytes());});
   return {date:st.weekKey,mailHtml:html.replace(/PHOTO:/g,'cid:'),pdfHtml:pdfHtml,inlineImages:images};
 }
