@@ -189,7 +189,7 @@ function findInspectionRows_(s, date, machine) {
 
 function getDataSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var excluded = [ITEM_CONFIG_SHEET, MACHINE_CONFIG_SHEET, MAIL_CONFIG_SHEET];
+  var excluded = [ITEM_CONFIG_SHEET, MACHINE_CONFIG_SHEET, MAIL_CONFIG_SHEET, '점검제외일', '자동발송상태'];
   var sheets = ss.getSheets();
   for (var i=0; i<sheets.length; i++) {
     if (excluded.indexOf(sheets[i].getName()) === -1) return sheets[i];
