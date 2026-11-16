@@ -20,6 +20,8 @@ function doPost(e) {
   try {
     var d = JSON.parse(e && e.postData && e.postData.contents || "{}");
 
+    if (/^engineer_/.test(String(d.action || ''))) return jsonResponse(engineerAction_(d));
+
     if (d.action === "save_items") {
       saveItemSettings_(d.items || []);
       return jsonResponse({status:"success", items:getItemSettings_()});
@@ -378,3 +380,4 @@ function findSubmission_(s, id) {
   for(var i=rows.length-1;i>=0;i--) if(String(rows[i][5])===String(id)) return {requestNo:rows[i][0]||""};
   return null;
 }
+
