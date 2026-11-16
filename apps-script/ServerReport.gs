@@ -144,5 +144,6 @@ function buildServerReport_(st) {
   html=html.replace(/<h2>([1-5])\. ([^<]+)<\/h2>/g,function(_,n,title){var color=colors[Number(n)-1];return '<table width="100%" cellspacing="0" cellpadding="10" style="width:100%;margin-top:10px;margin-bottom:6px;page-break-after:avoid"><tr><td bgcolor="'+color[0]+'" style="background-color:'+color[0]+';border-left:6px solid '+color[1]+';padding:7px;color:#123a66;font-size:16px;font-weight:bold">'+n+'. '+title+'</td></tr></table>';});
   html=html.replace('</body>','</div></body>');
   var pdfHtml=html.replace(/PHOTO:([\w]+)/g,function(_,cid){var b=images[cid];return 'data:'+b.getContentType()+';base64,'+Utilities.base64Encode(b.getBytes());});
-  return {date:st.weekKey,mailHtml:html.replace(/PHOTO:/g,'cid:'),pdfHtml:pdfHtml,inlineImages:images};
+  return {date:st.weekKey,mailHtml:html.replace(/PHOTO:/g,'cid:').replace('</body>',engineerMailButton_(st.weekKey)+'</body>'),pdfHtml:pdfHtml,inlineImages:images};
 }
+
