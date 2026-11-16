@@ -37,7 +37,8 @@ function runServerReportCheck_() {
   var now=new Date(),tz='Asia/Seoul',date=Utilities.formatDate(now,tz,'yyyy-MM-dd');
   if(Utilities.formatDate(now,tz,'u')!=='1')return {status:'skip',reason:'not_monday'};
   if(serverReportExcluded_(date))return {status:'skip',reason:'excluded_day'};
-  var lock=LockService.getScriptLock();lock.waitLock(30000);
+  // Serialize reports independently of the script lock used by mobile saves.
+  var lock=LockService.getUserLock();lock.waitLock(30000);
   try{
     var props=PropertiesService.getScriptProperties();
     if(props.getProperty('MM_REPORT_FINAL_'+date)==='Y')return {status:'skip',reason:'final_already_sent'};
