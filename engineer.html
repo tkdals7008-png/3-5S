@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>My Machine 개선조치 등록</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6fb;color:#172033;font:16px/1.6 Arial,'Malgun Gothic',sans-serif}main{max-width:640px;margin:auto;padding:20px}h1{font-size:24px;color:#123a66}h2{font-size:19px}section{background:white;border:1px solid #d9e2ef;border-radius:12px;padding:18px;margin:16px 0}button,input,textarea,select{font:inherit}button{border:0;border-radius:8px;background:#123a66;color:white;padding:13px 18px;cursor:pointer;min-height:48px}button:disabled{opacity:.55;cursor:wait}select,input,textarea{display:block;width:100%;padding:12px;border:1px solid #b6c5d7;border-radius:7px;margin:6px 0 18px}textarea{min-height:110px}label{font-weight:bold}fieldset{border:0;padding:0;margin:0}#message{white-space:pre-wrap;padding:14px;background:#e8f0fa;border-radius:8px}#details{white-space:pre-wrap}#photos{display:flex;gap:8px;flex-wrap:wrap}#photos img,#preview{max-width:180px;max-height:140px;object-fit:contain;border-radius:6px}small{display:block;color:#52647a}#save{width:100%}.secondary{background:#e2eaf4;color:#123a66}#completeList{white-space:pre-line}p{overflow-wrap:anywhere}[hidden]{display:none!important}
+</style></head><body><main>
+<h1>My Machine 개선조치 등록</h1><p id="dateLabel"></p>
+<p id="message" role="status" aria-live="polite">요청 목록을 확인하고 있습니다.</p>
+<button id="refresh" class="secondary" type="button">목록 / 저장 여부 다시 확인</button>
+<section id="requestSection" hidden><label for="request">1. 개선 요청 선택</label><select id="request"></select><div id="details"></div><div id="photos"></div></section>
+<section id="formSection" hidden><form id="form"><fieldset id="fields">
+<h2>2. 조치 결과 입력</h2><label for="name">조치자 이름</label><input id="name" autocomplete="name" maxlength="50" required>
+<label for="text">조치 내용</label><textarea id="text" maxlength="2000" placeholder="어떻게 개선했는지 입력해 주세요." required></textarea>
+<label for="photo">완료 사진 1장</label><input id="photo" type="file" accept="image/*" required><small>사진을 선택하면 자동으로 크기를 줄입니다.</small><img id="preview" alt="선택한 완료 사진" hidden>
+<h2>3. 완료 등록</h2><button id="save" type="submit">완료 등록</button></fieldset></form></section>
+<section id="completed" hidden><h2>완료된 요청</h2><div id="completeList"></div></section>
+<small>기존 점검 내용과 개선 전 사진은 유지됩니다. 등록 후 수정이 필요하면 관리자에게 문의해 주세요.</small>
+</main><script src="engineer.js"></script></body></html>
